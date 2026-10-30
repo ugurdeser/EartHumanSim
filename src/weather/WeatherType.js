@@ -15,7 +15,7 @@ const type = (id, name, icon, options) =>
 export const WeatherType = Object.freeze({
   CLEAR: type('clear', 'Açık', '☀️', { duration: [12, 72] }),
   CLOUDY: type('cloudy', 'Bulutlu', '☁️', { duration: [6, 36], cooling: 2, clouds: 0.5 }),
-  RAIN: type('rain', 'Yağmurlu', '🌧️', { duration: [3, 18], cooling: 3, windChill: 1, precipitation: 0.5, moveFactor: 0.95, shelterUrge: 0.2, clouds: 0.8 }),
+  RAIN: type('rain', 'Yağmurlu', '🌧️', { duration: [3, 18], cooling: 3, windChill: 1, precipitation: 0.5, moveFactor: 0.95, shelterUrge: 0.2, clouds: 0.95 }),
   STORM: type('storm', 'Sağanak', '⛈️', { duration: [2, 8], cooling: 5, windChill: 4, precipitation: 1, moveFactor: 0.85, shelterUrge: 0.6, clouds: 1 }),
   SNOW: type('snow', 'Karlı', '🌨️', { duration: [6, 36], cooling: 3, windChill: 1, precipitation: 0.1, snowfall: 0.015, moveFactor: 0.95, clouds: 0.8 }),
   BLIZZARD: type('blizzard', 'Tipi', '❄️', { duration: [8, 30], cooling: 8, windChill: 7, precipitation: 0.2, snowfall: 0.04, moveFactor: 0.7, shelterUrge: 1, clouds: 1 }),

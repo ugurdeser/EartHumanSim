@@ -1,5 +1,7 @@
 import { WORLD } from '../config.js';
 
+const CENTER_CELL = 4; // insanlar 4x4 parçalık (1 km) hücrelere yuvarlanır: küçük yer değişimleri yeniden hesap gerektirmez
+
 /**
  * İnsanların çevresindeki "etkin" parçalar. Hayvanlar yalnızca burada simüle edilir;
  * yeni etkinleşen parçalar dinleyicilere bildirilir (ör. hayvan üretimi için).
@@ -12,6 +14,26 @@ export class ActiveRegion {
     this.everActive = new Set();
     this.listeners = [];
     this.signature = '';
+    this.offsets = this.#ringOffsets();
+  }
+
+  /** Bir parçanın çevresinde etkin sayılan parçaların göreli konumları (bir kez hesaplanır). */
+  #ringOffsets() {
+    const size = this.chunks.chunkSize;
+    const ring = Math.ceil(this.radius / size) + Math.ceil(CENTER_CELL / 2);
+    const offsets = [];
+    for (let dy = -ring; dy <= ring; dy++) {
+      for (let dx = -ring; dx <= ring; dx++) {
+        if (Math.hypot(dx, dy) * size <= this.radius + size * (1 + CENTER_CELL / 2)) offsets.push([dx, dy]);
+      }
+    }
+    return offsets;
+  }
+
+  /** Kişinin bulunduğu hücrenin orta parçası. */
+  #centerOf(position) {
+    const snap = (value) => Math.min(this.chunks.cols - 1, Math.floor(this.chunks.coord(value) / CENTER_CELL) * CENTER_CELL + CENTER_CELL / 2);
+    return this.chunks.keyOf(snap(position.x), snap(position.y));
   }
 
   onFirstActivation(listener) {
@@ -22,26 +44,24 @@ export class ActiveRegion {
     return this.keys.has(this.chunks.keyAt(position));
   }
 
-  /** Kimse başka parçaya geçmediyse hesaplama atlanır. */
+  /**
+   * Aynı hücredeki insanlar tek merkez sayılır; merkezler değişmediyse hesaplama atlanır.
+   */
   refresh(people) {
-    const signature = people.map((p) => this.chunks.keyAt(p.position)).join(',');
+    const centers = [...new Set(people.map((p) => this.#centerOf(p.position)))].sort((a, b) => a - b);
+    const signature = centers.join(',');
     if (signature === this.signature) return;
     this.signature = signature;
 
-    const size = this.chunks.chunkSize;
-    const ring = Math.ceil(this.radius / size);
+    const cols = this.chunks.cols;
     const next = new Set();
-    for (const person of people) {
-      const cx = this.chunks.coord(person.position.x);
-      const cy = this.chunks.coord(person.position.y);
-      for (let dy = -ring; dy <= ring; dy++) {
-        for (let dx = -ring; dx <= ring; dx++) {
-          const x = cx + dx;
-          const y = cy + dy;
-          if (x < 0 || y < 0 || x >= this.chunks.cols || y >= this.chunks.cols) continue;
-          if (Math.hypot(dx, dy) * size > this.radius + size) continue;
-          next.add(this.chunks.keyOf(x, y));
-        }
+    for (const center of centers) {
+      const cx = center % cols;
+      const cy = Math.floor(center / cols);
+      for (const [dx, dy] of this.offsets) {
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x >= 0 && y >= 0 && x < cols && y < cols) next.add(this.chunks.keyOf(x, y));
       }
     }
     this.keys = next;

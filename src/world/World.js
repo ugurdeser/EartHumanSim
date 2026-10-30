@@ -53,6 +53,7 @@ export class World {
     });
     this.activeRegion = new ActiveRegion(this.chunks);
     this.activeTimer = 0;
+    this.coarseTime = false; // ileri sarılırken true: önemsiz türler seyrek güncellenir
     this.systems = []; // periyodik servisler (ör. hayvan üretici): update(world, dt)
 
     this.social = new SocialSystem(this);
@@ -340,10 +341,12 @@ export class World {
     for (const system of this.systems) system.update(this, dt);
     for (const home of this.homes) home.update(dt, this.weather.precipitation);
     this.social.update();
+    let anyDead = false;
     for (const animal of this.animals) {
-      if (animal.alive && this.activeRegion.isActive(animal.position)) animal.update(this, dt);
+      if (!animal.alive) anyDead = true;
+      else if (this.activeRegion.isActive(animal.position)) animal.update(this, dt);
     }
-    if (this.animals.some((a) => !a.alive)) {
+    if (anyDead) {
       this.animals = this.animals.filter((a) => a.alive);
       this.predators = this.predators.filter((a) => a.alive);
     }

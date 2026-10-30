@@ -256,6 +256,8 @@ export const ANIMALS = Object.freeze({
     PER_POND_RADIUS: 10, // her 10 m yarıçap için 1 balık
     RESTOCK_TIME: 60 * DAY, // balığı biten suya komşu sulardan balık gelmesi
     SWIM_SPEED: 0.4,
+    THINK_INTERVAL: 120, // balıklar kaç saniyede bir davranışını yeniden seçer
+    COARSE_INTERVAL: 10 * MINUTE, // ileri sararken balıklar bu sıklıkta güncellenir
     ADULT_AGE: 1,
     OLD_AGE: 5,
     OLD_AGE_RISK: 0.4,
@@ -285,6 +287,25 @@ export const WEATHER = Object.freeze({
   WET_TIME: 2 * HOUR, // sağanakta açıkta sırılsıklam olma süresi
   DRY_TIME: 3 * HOUR, // kuruma süresi (ateş yanında çok daha çabuk)
   WET_CHILL: 8, // sırılsıklam kişinin hissettiği ek soğuk (°C)
+});
+
+/** Haritanın üstünde süzülen bulutlar (yalnızca görsel). */
+export const CLOUDS = Object.freeze({
+  COUNT: 180, // haritadaki bulut sayısı (gökyüzü tam kapalıyken hepsi görünür)
+  SIZE: [250, 700], // bulut çapı (m)
+  CLEAR_COVER: 0.12, // açık havada da birkaç dağınık bulut
+  DRIFT: 30, // sürüklenme hızı (m / gerçek saniye, oyun hızıyla en fazla 10 kat)
+  FADE_ZOOM: [0.12, 1.2], // bu zoom aralığında yukarıdan aşağı inerken silikleşir
+  MAX_ALPHA: 0.85,
+  RAIN_SIZE_BOOST: 0.9, // yağış arttıkça bulutlar büyür ve birbirine karışır
+  RAIN_ALPHA_BOOST: 0.15, // yağışta bulutlar daha az saydam
+  DARK_SHARE: 0.4, // yağışta koyulaşan bulutların oranı
+  OVERCAST_FROM: [0.6, 0.95], // kapalılık bu aralıkta artarken sürekli örtü belirir
+  OVERCAST_COVER: 0.9, // yağmurda haritanın kapanan oranı
+  STORM_COVER: 0.97, // sağanakta
+  OVERCAST_ALPHA: 0.85,
+  SHADOW_ALPHA: 0.18, // yere düşen gölge
+  SHADOW_OFFSET: 120, // gölgenin buluttan kayması (m)
 });
 
 export const FIRE = Object.freeze({

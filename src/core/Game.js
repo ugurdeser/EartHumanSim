@@ -11,6 +11,9 @@ import { HomeWindow } from '../ui/HomeWindow.js';
 import { PlantWindow } from '../ui/PlantWindow.js';
 import { ProductionWindow } from '../ui/ProductionWindow.js';
 import { CharacterWindow } from '../ui/character/CharacterWindow.js';
+import { DevPanel } from '../ui/dev/DevPanel.js';
+import { WeatherDevSection } from '../ui/dev/WeatherDevSection.js';
+import { FastForward } from './FastForward.js';
 import { WorldBuilder } from './WorldBuilder.js';
 
 const UI_REFRESH_MS = 200;
@@ -22,6 +25,7 @@ export class Game {
     const { rng, clock, calendar, log, world, start } = WorldBuilder.build(seed);
     Object.assign(this, { rng, clock, calendar, log, world });
 
+    this.fastForward = new FastForward(clock, world);
     this.selection = new Selection();
     this.camera = new Camera(world.size);
     this.renderer = new Renderer(canvas, world, this.camera, this.selection);
@@ -36,6 +40,7 @@ export class Game {
     this.groupWindow = new GroupWindow(canvas.parentElement, world, this.selection);
     this.animalWindow = new AnimalWindow(canvas.parentElement, world, this.selection);
     this.productionWindow = new ProductionWindow(canvas.parentElement);
+    this.devPanel = new DevPanel(canvas.parentElement, [new WeatherDevSection(world.weather)]);
     this.input = new InputController({ canvas, camera: this.camera, world, selection: this.selection, game: this });
 
     this.accumulator = 0;
@@ -54,6 +59,15 @@ export class Game {
     if (index < 0 || index >= SIM.SPEEDS.length) return;
     this.clock.timeScale = SIM.SPEEDS[index];
     this.clock.paused = false;
+  }
+
+  /** Simülasyonu `days` gün ileri sarar (sürerken basılırsa eklenir). */
+  skipDays(days) {
+    this.fastForward.start(days);
+  }
+
+  cancelSkip() {
+    this.fastForward.cancel();
   }
 
   /** Yüksek hızlarda adım büyür ki saniye başına adım sayısı makul kalsın. */
@@ -83,11 +97,13 @@ export class Game {
       this.homeWindow.update();
       this.groupWindow.update();
       this.animalWindow.update();
+      this.devPanel.update();
     }
     requestAnimationFrame((t) => this.#frame(t));
   }
 
   #simulate(realDt) {
+    if (this.fastForward.step()) return; // ileri sarılırken normal akış bekler
     if (this.clock.paused) return;
     const step = this.stepSize;
     this.accumulator += realDt * SIM.REAL_TO_SIM * this.clock.timeScale;

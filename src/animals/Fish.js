@@ -45,6 +45,8 @@ export class Fish extends HerdAnimal {
       mateRadius: F.MATE_RADIUS,
     }),
     shelterSeasons: Object.freeze([]),
+    thinkInterval: F.THINK_INTERVAL, // tehdit algılamaz; seyrek karar vermesi yeter
+    coarseInterval: F.COARSE_INTERVAL,
     maxHerd: 1, // sürü boyunu suyun büyüklüğü belirler (createHerd)
 
     createProducts: () => [new CarcassProduct(Items.FISH, { amount: (a) => Math.max(1, F.MEAT * a.genome.scale('size', 0.6, 1.4) * (a.isYoung ? 0.4 : 1)) })],

@@ -1,11 +1,14 @@
 import { AgentLayer } from '../render/AgentLayer.js';
 import { ChunkLayer } from '../render/ChunkLayer.js';
+import { FeatureLayer } from '../render/FeatureLayer.js';
 
 const DRAG_THRESHOLD = 4;
 const PICK_RADIUS_PX = 12;
+const HOME_PICK_MARGIN_PX = 4; // yuva noktasının biraz dışına tıklamak da sayılır
+const PERSON_OVER_HOME_PX = 5; // yuvanın üstünde duran kişi ancak tam üstüne tıklanırsa seçilir
 const ZOOM_STEP = 1.15;
 
-/** Fare/klavye: tekerlek = zoom, sürükle = kaydır, tıkla = kişi, hayvan ya da bitki seç. */
+/** Fare/klavye: tekerlek = zoom, sürükle = kaydır, tıkla = kişi, yuva, hayvan ya da bitki seç. */
 export class InputController {
   constructor({ canvas, camera, world, selection, game }) {
     this.canvas = canvas;
@@ -72,8 +75,19 @@ export class InputController {
         bestDistance = d;
       }
     }
-    if (best) this.selection.select(best);
+    const home = this.#homeAt(point);
+    if (best && (!home || bestDistance <= this.camera.pixels(PERSON_OVER_HOME_PX))) this.selection.select(best);
+    else if (home) this.selection.selectHome(home);
     else this.#pickAnimal(point, maxDistance);
+  }
+
+  /** Tıklanan noktanın üstündeki en yakın yuva. */
+  #homeAt(point) {
+    const margin = this.camera.pixels(HOME_PICK_MARGIN_PX);
+    const reach = (home) => FeatureLayer.homeRadius(home, this.camera) + margin;
+    const maxReach = this.camera.pixels(PICK_RADIUS_PX * 2) + 10;
+    const homes = this.world.homeGrid.queryRadius(point, maxReach, (home) => home.position.distanceTo(point) <= reach(home));
+    return homes.reduce((nearest, home) => (!nearest || home.position.distanceTo(point) < nearest.position.distanceTo(point) ? home : nearest), null);
   }
 
   /** Haritada görünen hayvanlar seçilebilir (uzaktan balıklar çizilmez). */
@@ -91,7 +105,12 @@ export class InputController {
   }
 
   #onKeyDown(e) {
-    if (e.target instanceof HTMLInputElement) return;
+    if (e.code === 'F1') {
+      e.preventDefault(); // tarayıcının yardım sayfası açılmasın
+      this.game.devPanel.toggle();
+      return;
+    }
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
     if (e.code === 'Space') {
       e.preventDefault();
       this.game.togglePause();

@@ -34,9 +34,9 @@ export class Herd {
     return this.size >= this.maxSize;
   }
 
+  /** Ölen üye sürüden çıkarıldığı için ilk üye hep yaşayandır. */
   get leader() {
-    for (const member of this.members) if (member.alive) return member;
-    return null;
+    return this.members.values().next().value ?? null;
   }
 
   add(animal) {

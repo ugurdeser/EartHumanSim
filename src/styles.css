@@ -49,15 +49,51 @@ body {
   position: absolute;
   left: 12px;
   bottom: 12px;
-  padding: 10px 12px;
+  padding: 6px 12px;
   background: rgba(20, 24, 18, 0.82);
   border-radius: 8px;
   line-height: 1.7;
-  pointer-events: none;
+  user-select: none;
 }
 
-.legend .keys {
-  margin: 6px 0 0;
+.legend summary {
+  cursor: pointer;
+  color: #cfd6c4;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.legend[open] > summary {
+  margin-bottom: 4px;
+}
+
+.legend-groups {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 4px 18px;
+}
+
+.legend-groups h4 {
+  margin: 0;
+  color: #9aa08f;
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.legend-keys {
+  margin-top: 6px;
+}
+
+.legend-keys summary {
+  font-weight: normal;
+  color: #aab;
+  font-size: 11px;
+}
+
+.legend-keys p {
+  margin: 2px 0 0;
   color: #aab;
   font-size: 11px;
 }
@@ -103,6 +139,30 @@ body {
 .time-controls .buttons {
   display: flex;
   gap: 4px;
+}
+
+.time-controls .buttons.skip {
+  margin-top: 4px;
+}
+
+.time-controls .buttons.skip button {
+  font-size: 12px;
+}
+
+.time-controls .skip-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  color: #ffe14d;
+}
+
+.time-controls .skip-row.hidden {
+  display: none;
+}
+
+.time-controls .skip-status {
+  flex: 1;
 }
 
 button {
@@ -770,8 +830,61 @@ button.icon {
   background: #e0a84a;
 }
 
-.legend-grid {
+
+/* ---------- Geliştirici paneli ---------- */
+
+.char-window.dev-panel {
+  top: 48px;
+  left: 12px;
+  right: auto;
+  width: 340px;
+}
+
+.dev-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.dev-section h4 {
+  margin: 10px 0 4px;
+  color: #9aa08f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dev-buttons {
   display: grid;
-  grid-template-columns: auto auto;
-  column-gap: 14px;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.dev-buttons button {
+  padding: 4px 2px;
+  font-size: 12px;
+}
+
+.dev-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.dev-row input[type='number'],
+.dev-row select {
+  width: 140px;
+  padding: 2px 4px;
+  background: #2a3025;
+  color: inherit;
+  border: 1px solid #45503c;
+  border-radius: 4px;
+}
+
+.dev-row input[type='range'] {
+  width: 140px;
 }

@@ -1,9 +1,11 @@
-const THINK_INTERVAL = 4;
+const DEFAULT_THINK_INTERVAL = 4;
 
 /** Davranışlar arasından en acil olanı seçip yürütür. Yeni davranış = listeye yeni sınıf. */
 export class AnimalBrain {
-  constructor(behaviors) {
+  /** `thinkInterval`: davranışlar kaç saniyede bir yeniden tartılır (sakin türlerde daha seyrek). */
+  constructor(behaviors, thinkInterval = DEFAULT_THINK_INTERVAL) {
     this.behaviors = behaviors;
+    this.thinkInterval = thinkInterval;
     this.current = null;
     this.timer = 0;
   }
@@ -15,7 +17,7 @@ export class AnimalBrain {
   update(animal, world, dt) {
     this.timer -= dt;
     if (!this.current || this.timer <= 0) {
-      this.timer = THINK_INTERVAL;
+      this.timer = this.thinkInterval;
       this.#choose(animal, world);
     }
     if (this.current?.tick(animal, world, dt)) this.current = null;

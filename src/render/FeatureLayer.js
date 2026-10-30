@@ -57,9 +57,14 @@ export class FeatureLayer {
     if (camera.zoom >= LABEL_ZOOM) this.#label(ctx, camera, mine.name, mine.position.x, mine.position.y + radius + camera.pixels(11), '#3d4048');
   }
 
+  /** Yuvanın ekrandaki yarıçapı (m); tıklayarak seçmek için de kullanılır. */
+  static homeRadius(home, camera) {
+    return Math.max(2 + home.shelterLevel * 1.5, camera.pixels(3 + home.shelterLevel * 1.5));
+  }
+
   #drawHome(ctx, camera, home) {
     const { x, y } = home.position;
-    const radius = Math.max(2 + home.shelterLevel * 1.5, camera.pixels(3 + home.shelterLevel * 1.5));
+    const radius = FeatureLayer.homeRadius(home, camera);
     if (home.fire.isLit) {
       DotPainter.dot(ctx, x, y, Math.max(FIRE.RADIUS * 0.6, camera.pixels(6)), 'rgba(255, 140, 40, 0.18)');
     }

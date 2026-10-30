@@ -24,6 +24,7 @@ export class WeatherSystem {
     this.until = this.#durationOf(this.current);
     this.snowCover = 0; // 0..1
     this.moisture = NORMAL_MOISTURE;
+    this.locked = false; // geliştirici paneli: hava değişmez
   }
 
   #weightedPick(weights) {
@@ -98,7 +99,43 @@ export class WeatherSystem {
     return this.shelterUrge >= SEVERE_URGE;
   }
 
+  /** Şimdiki havanın bitmesine kalan süre (saniye; sabitlenmişse Infinity). */
+  get remaining() {
+    return this.locked ? Infinity : Math.max(0, this.until - this.calendar.now);
+  }
+
+  // ---------- Geliştirici paneli ----------
+
+  /** Havayı hemen, tam güçte başlatır; `hours` verilmezse kendi süresi kadar sürer. */
+  force(weather, hours = null) {
+    const now = this.calendar.now;
+    this.current = weather;
+    this.startedAt = now - RAMP;
+    this.until = now + (hours === null ? this.#durationOf(weather) : hours * HOUR);
+    this.next = this.#roll(this.until);
+  }
+
+  setNext(weather) {
+    this.next = weather;
+  }
+
+  /** Sabitlenen hava süresi dolsa da değişmez; çözülünce kalan süre yeniden belirlenir. */
+  setLocked(locked) {
+    if (this.locked === locked) return;
+    this.locked = locked;
+    if (!locked) this.until = Math.max(this.until, this.calendar.now + this.#durationOf(this.current));
+  }
+
+  setSnowCover(value) {
+    this.snowCover = clamp01(value);
+  }
+
+  setMoisture(value) {
+    this.moisture = Math.max(0, value);
+  }
+
   update(dt) {
+    if (this.locked) this.until = Math.max(this.until, this.calendar.now + RAMP);
     if (this.calendar.now >= this.until) this.#change();
     this.#updateGround(dt);
   }
