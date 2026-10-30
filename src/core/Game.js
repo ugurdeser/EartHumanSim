@@ -5,6 +5,11 @@ import { Renderer } from '../render/Renderer.js';
 import { InputController } from '../ui/InputController.js';
 import { Selection } from '../ui/Selection.js';
 import { Sidebar } from '../ui/Sidebar.js';
+import { AnimalWindow } from '../ui/AnimalWindow.js';
+import { GroupWindow } from '../ui/GroupWindow.js';
+import { HomeWindow } from '../ui/HomeWindow.js';
+import { PlantWindow } from '../ui/PlantWindow.js';
+import { ProductionWindow } from '../ui/ProductionWindow.js';
 import { CharacterWindow } from '../ui/character/CharacterWindow.js';
 import { WorldBuilder } from './WorldBuilder.js';
 
@@ -26,6 +31,11 @@ export class Game {
 
     this.sidebar = new Sidebar(sidebar, this);
     this.characterWindow = new CharacterWindow(canvas.parentElement, world, this.selection);
+    this.plantWindow = new PlantWindow(canvas.parentElement, world, this.selection);
+    this.homeWindow = new HomeWindow(canvas.parentElement, world, this.selection);
+    this.groupWindow = new GroupWindow(canvas.parentElement, world, this.selection);
+    this.animalWindow = new AnimalWindow(canvas.parentElement, world, this.selection);
+    this.productionWindow = new ProductionWindow(canvas.parentElement);
     this.input = new InputController({ canvas, camera: this.camera, world, selection: this.selection, game: this });
 
     this.accumulator = 0;
@@ -46,9 +56,9 @@ export class Game {
     this.clock.paused = false;
   }
 
-  /** Yüksek hızlarda adım büyür ki kare başına adım sayısı makul kalsın. */
+  /** Yüksek hızlarda adım büyür ki saniye başına adım sayısı makul kalsın. */
   get stepSize() {
-    return clamp(this.clock.timeScale / 50, SIM.MIN_STEP, SIM.MAX_STEP);
+    return clamp((this.clock.timeScale * SIM.REAL_TO_SIM) / SIM.STEPS_PER_SECOND, SIM.MIN_STEP, SIM.MAX_STEP);
   }
 
   // ---------- Döngü ----------
@@ -69,6 +79,10 @@ export class Game {
       this.lastUiRefresh = timestamp;
       this.sidebar.update();
       this.characterWindow.update();
+      this.plantWindow.update();
+      this.homeWindow.update();
+      this.groupWindow.update();
+      this.animalWindow.update();
     }
     requestAnimationFrame((t) => this.#frame(t));
   }

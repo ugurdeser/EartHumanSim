@@ -38,7 +38,14 @@ export class PlantLayer {
   #drawFoodMarks(ctx, bushes, trees) {
     const now = this.world.now;
     const markRadius = (p) => p.radius * 0.35;
-    DotPainter.batch(ctx, bushes.filter((b) => b.available(now) > 0), COLORS.BERRY, markRadius);
+    const byColor = new Map();
+    for (const bush of bushes) {
+      if (bush.available(now) <= 0) continue;
+      const color = bush.species.fruitColor;
+      if (!byColor.has(color)) byColor.set(color, []);
+      byColor.get(color).push(bush);
+    }
+    for (const [color, group] of byColor) DotPainter.batch(ctx, group, color, markRadius);
     DotPainter.batch(ctx, trees.filter((t) => t.available(now) > 0), COLORS.FRUIT, markRadius);
   }
 }

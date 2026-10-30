@@ -1,25 +1,35 @@
 import { el } from './dom.js';
 
-/** Tüm aileler: yuva/barınak bilgisi ve üyeleri (tıklayınca kişi seçilir). */
+const HOME_ZOOM = 1.5; // yuvaya gidilirken en az bu yakınlık
+
+/** Tüm aileler: yuva/barınak bilgisi ve üyeleri. Üyeye tıklayınca kişi, başlığa tıklayınca yuva açılır. */
 export class FamilyPanel {
-  constructor(world, selection) {
+  constructor(world, selection, camera) {
     this.world = world;
     this.selection = selection;
-    this.title = el('h3');
+    this.camera = camera;
     this.list = el('div', { class: 'families', onMouseDown: (e) => this.#onPick(e) });
-    this.root = el('section', { class: 'panel' }, this.title, this.list);
+    this.root = el('div', { class: 'tab-view' }, this.list);
   }
 
   #onPick(e) {
+    const head = e.target.closest('[data-family]');
+    if (head) return this.#openHome(Number(head.dataset.family));
     const chip = e.target.closest('[data-id]');
     if (!chip) return;
     const person = this.world.people.find((p) => p.id === Number(chip.dataset.id));
     if (person) this.selection.select(person, { follow: true });
   }
 
+  #openHome(familyId) {
+    const family = this.world.social.families.families.find((f) => f.id === familyId);
+    if (!family) return;
+    this.selection.selectHome(family.home);
+    this.camera.focusOn(family.home.position, HOME_ZOOM);
+  }
+
   update() {
     const families = this.world.social.families.families;
-    this.title.textContent = `Aileler: ${families.length}`;
     if (families.length === 0) {
       this.list.replaceChildren(el('p', { class: 'hint', text: 'Henüz evlenen yok.' }));
       return;
@@ -32,8 +42,8 @@ export class FamilyPanel {
     const shelter = `${home.shelter.name}${home.fire.isLit ? ' 🔥' : ''}`;
     return el(
       'div',
-      { class: 'family' },
-      el('div', { class: 'family-head' }, el('strong', { text: family.name }), el('span', { text: `${shelter} · ${home.storage.foodCount} yiyecek` })),
+      { class: `family${home === this.selection.home ? ' selected' : ''}` },
+      el('div', { class: 'family-head', 'data-family': family.id, title: 'Yuvayı göster' }, el('strong', { text: family.name }), el('span', { text: `${shelter} · ${home.storage.foodCount} yiyecek` })),
       el(
         'div',
         { class: 'members' },

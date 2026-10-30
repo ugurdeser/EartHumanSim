@@ -23,10 +23,10 @@ export class MineSource extends MaterialSource {
     return new SequenceAction(`${mine.name} yoluna çıktı`, [
       new MoveToAction(`${mine.name} yolunda`, mine.position, { arriveDistance: mine.radius }),
       new PerformAction(`${this.type.name} çıkarıyor`, 1 * HOUR / person.workSpeed('mining'), {
-        onComplete: (p) => {
+        onComplete: (p, w) => {
           const amount = Math.max(1, Math.round((1 + p.traits.strength * 2 + p.skills.get('mining') * 2) * this.yieldScale));
           p.inventory.add(this.type, Math.min(amount, p.inventory.roomFor(this.type)));
-          p.improveSkill('mining', 0.02);
+          p.improveSkill('mining', 1, w);
         },
       }),
     ]);

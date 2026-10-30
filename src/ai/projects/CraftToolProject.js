@@ -1,5 +1,7 @@
+import { HOUR } from '../../config.js';
 import { LogType } from '../../core/EventLog.js';
 import { PerformAction } from '../../actions/PerformAction.js';
+import { SequenceAction } from '../../actions/SequenceAction.js';
 import { MaterialSources } from '../materials/MaterialSources.js';
 import { ActionFactory } from '../ActionFactory.js';
 import { Project } from './Project.js';
@@ -13,7 +15,8 @@ export class CraftToolProject extends Project {
 
   priority(person, world) {
     if (!person.isAdult || !person.knowledge.knows(this.recipe.technology)) return 0;
-    if (person.inventory.has(this.recipe.output) || person.home.storage.has(this.recipe.output)) return 0;
+    if (!person.inventory.isUpgrade(this.recipe.output) || person.home.storage.has(this.recipe.output)) return 0;
+    if (this.recipe.needsFire && !person.home.fire.isLit) return 0;
     const missing = this.recipe.firstMissing(person.inventory, person.home.storage);
     if (missing && !MaterialSources.canGather(person, world, missing.type)) return 0;
     return 0.9;
@@ -26,15 +29,16 @@ export class CraftToolProject extends Project {
       return ActionFactory.obtainMaterial(person, world, missing.type, needed);
     }
     const output = this.recipe.output;
-    return new PerformAction(`${output.name} yapıyor`, this.recipe.time / person.workSpeed('crafting', 'intelligence'), {
+    const craft = new PerformAction(`${output.name} yapıyor`, this.recipe.time / person.workSpeed('crafting', 'intelligence'), {
       onComplete: (p, w) => {
         if (!this.recipe.canCraftFrom(p.inventory)) return;
         this.recipe.consumeFrom(p.inventory);
         p.inventory.add(output, 1);
-        p.improveSkill('crafting', 0.04);
+        p.improveSkill('crafting', this.recipe.time / HOUR, w);
         w.log.personal([p], `🔨 ${output.name} yaptı`, LogType.BUILD);
         onWorkDone();
       },
     });
+    return this.recipe.needsFire ? new SequenceAction(`${output.name} için ocağa gidiyor`, [ActionFactory.goHome(person, 'Ocağa gidiyor'), craft]) : craft;
   }
 }

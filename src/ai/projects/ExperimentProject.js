@@ -17,7 +17,7 @@ export class ExperimentProject extends Project {
     return new PerformAction('Yeni şeyler deniyor', 1 * HOUR, {
       onComplete: (p, w) => {
         w.invention.tryInvent(p, 1);
-        p.improveSkill('crafting', 0.01);
+        p.improveSkill('crafting', 1, w);
         onWorkDone();
       },
     });

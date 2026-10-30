@@ -1,4 +1,4 @@
-import { MINUTE } from '../../config.js';
+import { HOUR, MINUTE } from '../../config.js';
 import { MoveToAction } from '../../actions/MoveToAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
@@ -24,7 +24,7 @@ export class ForageProvider extends FoodProvider {
         onComplete: (p, w) => {
           const taken = source.take(Math.min(portions, p.inventory.roomFor(source.food)), w.now);
           p.inventory.add(source.food, taken);
-          p.improveSkill('gathering', 0.005);
+          p.improveSkill('gathering', WORK_TIME / HOUR, w);
         },
       }),
     ]);

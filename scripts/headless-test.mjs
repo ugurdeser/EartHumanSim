@@ -1,12 +1,12 @@
 // Çizim olmadan simülasyonu hızlıca koşturan duman testi:
-//   node scripts/headless-test.mjs [gün] [seed] [--quiet]
+//   node scripts/headless-test.mjs [gün] [seed] [--quiet] [--step=sn]
 import { DAY } from '../src/config.js';
 import { WorldBuilder } from '../src/core/WorldBuilder.js';
 
 const days = Number(process.argv[2] ?? 5);
 const seed = Number(process.argv[3] ?? 42);
 const quiet = process.argv.includes('--quiet');
-const STEP = 4;
+const STEP = Number(process.argv.find((a) => a.startsWith('--step='))?.slice(7) ?? 4);
 
 const { clock, calendar, log, world } = WorldBuilder.build(seed);
 if (!quiet) log.subscribe((e) => console.log(`${e.time}  ${e.message}`));
@@ -14,7 +14,7 @@ if (!quiet) log.subscribe((e) => console.log(`${e.time}  ${e.message}`));
 const driveCounts = new Map();
 const t0 = performance.now();
 const end = clock.time + days * DAY;
-let nextReport = clock.time + 10 * DAY;
+let nextReport = clock.time + 30 * DAY;
 while (clock.time < end) {
   clock.advance(STEP);
   world.update(STEP);
@@ -23,7 +23,7 @@ while (clock.time < end) {
     driveCounts.set(k, (driveCounts.get(k) ?? 0) + 1);
   }
   if (clock.time >= nextReport) {
-    nextReport += 10 * DAY;
+    nextReport += 30 * DAY;
     console.log(`--- ${calendar.format()} | ${calendar.temperature.toFixed(0)}°C | nüfus=${world.people.length} hayvan=${world.animals.length} parça=${world.chunks.loadedCount} yol=${world.roads.size}`);
   }
 }

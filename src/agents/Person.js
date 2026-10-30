@@ -1,9 +1,11 @@
-import { AGING, DAY, FIRE, PERSON, WORLD } from '../config.js';
+import { AGING, CLOTHING, COMMUNITY, CONFLICT, DAY, FIRE, PERSON, SKILLS, WEATHER, WORLD } from '../config.js';
 import { clamp01 } from '../core/MathUtils.js';
+import { LogType } from '../core/EventLog.js';
 import { DecisionMaker } from '../ai/DecisionMaker.js';
 import { DriveSet } from '../drives/DriveSet.js';
 import { Inventory } from '../items/Inventory.js';
 import { Knowledge } from '../tech/Knowledge.js';
+import { Technologies } from '../tech/Technologies.js';
 import { Agent } from './Agent.js';
 import { ExplorationMap } from './ExplorationMap.js';
 import { LifeHistory } from './LifeHistory.js';
@@ -14,6 +16,7 @@ import { SKILL_DEFINITIONS, Skills } from './Skills.js';
 
 const HOME_SHELTER_RADIUS = 8;
 const FULL = 0.95;
+const RUN_MEMORY = 10; // sn: koşmayı bıraktıktan sonra da bir süre "koşuyor" sayılır (hayvanlar ürker)
 
 /** Haritada bir nokta olarak görünen insan. */
 export class Person extends Agent {
@@ -30,7 +33,7 @@ export class Person extends Agent {
     this.father = father;
 
     this.needs = needs ?? new Needs();
-    this.skills = new Skills(mother ? null : rng);
+    this.skills = new Skills();
     this.knowledge = new Knowledge();
     this.inventory = new Inventory(PERSON.CARRY_CAPACITY * (0.7 + traits.strength * 0.6));
     this.drives = DriveSet.fromPersonality(personality);
@@ -51,6 +54,13 @@ export class Person extends Agent {
     this.grievances = [];
     this.learnedDirtyWater = false; // kirli sudan hastalanınca öğrenir, bir daha içmez
     this.status = 0.1;
+    this.lastRanAt = -Infinity;
+    this.lastCaredAt = -Infinity; // bir büyüğün en son ilgilendiği an
+    this.clothesWear = 0; // henüz işlenmemiş giyilme süresi (sn)
+    this.share = new Inventory(); // köy merkezinde kendisini bekleyen pay
+    this.foster = null; // annesi yoksa oylamayla seçilen süt annesi
+    this.offenses = 0; // hesabı sorulan suçlar
+    this.thefts = 0; // görülen hırsızlıklar
 
     this.home = null;
     this.moveHome(home);
@@ -73,6 +83,36 @@ export class Person extends Agent {
 
   get isAdult() {
     return !this.isChild;
+  }
+
+  get isInfant() {
+    return this.ageYears < AGING.INFANT_AGE;
+  }
+
+  /** Doğum yapan evli kadın ilk yıl iş yapmaz, su ve yiyecek dışında dışarı çıkmaz; kocası destek olur. */
+  get isConfined() {
+    return this.isFemale && Boolean(this.partner?.alive) && this.children.some((c) => c.alive && c.ageYears < AGING.CONFINEMENT_YEARS);
+  }
+
+  /** İş yapmaz, ihtiyaçlarında başkalarından destek görür. */
+  get needsCare() {
+    return this.isDependent || this.isConfined;
+  }
+
+  /** Bebeği kucağında taşıyan: annesi, o yoksa süt annesi. */
+  get caretaker() {
+    if (this.mother?.alive) return this.mother;
+    return this.foster?.alive ? this.foster : null;
+  }
+
+  /** Bakanı olan bebek hep onun yanındadır. */
+  get isCarried() {
+    return this.isInfant && Boolean(this.caretaker);
+  }
+
+  /** Kendi başına yiyecek ve su arayamayacak kadar küçük: bakımı büyüklerdedir. */
+  get isDependent() {
+    return this.ageYears < AGING.SELF_CARE_AGE;
   }
 
   get isFemale() {
@@ -112,9 +152,28 @@ export class Person extends Agent {
     return this.children.filter((c) => c.alive && c.isChild);
   }
 
+  /** Bakmakla yükümlü olduğu çocuklar: kendi çocukları ve aynı evdeki küçükler. */
+  get wards() {
+    const housemates = [...this.home.owners].filter((p) => p !== this && p.alive && p.needsCare);
+    const daycare = this.group?.nanny === this ? this.group.daycareChildren : [];
+    return [...new Set([...this.dependentChildren, ...housemates, ...daycare])];
+  }
+
+  /** Bebeğine ya da topluluğun çocuklarına bakıyor: lider emrine uyması beklenmez. */
+  get isCaregiver() {
+    if (this.group?.nanny === this || (this.isFemale && this.children.some((c) => c.alive && c.isInfant))) return true;
+    return [...(this.group?.members ?? [])].some((m) => m.foster === this && m.isInfant);
+  }
+
   /** Anne, baba, çocuk veya kardeş mi? */
   isCloseRelativeOf(other) {
     return other === this.mother || other === this.father || this.children.includes(other) || this.siblings.includes(other);
+  }
+
+  /** Hamileliğin kaçıncı ayı (1..9); hamile değilse 0. */
+  pregnancyMonth(now) {
+    if (!this.pregnancy) return 0;
+    return Math.min(9, Math.floor((now - this.pregnancy.start) / (30 * DAY)) + 1);
   }
 
   relationTo(other) {
@@ -122,6 +181,17 @@ export class Person extends Agent {
   }
 
   // ---------- Hareket ----------
+
+  /** Küçük çocuk gündüz köy merkezinde bakıcısının yanında, değilse evinin çevresinde gezer. */
+  roamArea(world) {
+    if (this.isInfant || this.isConfined) return { center: this.home.position, radius: AGING.INFANT_ROAM };
+    if (this.ageYears >= AGING.DAYCARE_AGE && this.group?.nanny && !world.clock.isNight) return { center: this.group.center, radius: COMMUNITY.DAYCARE_RADIUS };
+    const [min, max] = AGING.TODDLER_ROAM;
+    const radius = min + ((this.ageYears - AGING.INFANT_AGE) / (AGING.SELF_CARE_AGE - AGING.INFANT_AGE)) * (max - min);
+    const guardian = this.mother?.alive ? this.mother : this.father;
+    const nearby = guardian?.alive && guardian.position.distanceTo(this.home.position) <= radius;
+    return { center: nearby ? guardian.position : this.home.position, radius };
+  }
 
   get walkSpeed() {
     const base = this.isChild ? PERSON.CHILD_WALK_SPEED : PERSON.WALK_SPEED;
@@ -135,7 +205,12 @@ export class Person extends Agent {
 
   /** Taş yol üzerinde daha hızlı yürünür. */
   moveTowards(target, speed, dt, world) {
+    if (speed >= this.runSpeed) this.lastRanAt = world.now;
     return super.moveTowards(target, speed * world.roads.speedFactor(this.position), dt, world);
+  }
+
+  isRunning(now) {
+    return now - this.lastRanAt < RUN_MEMORY;
   }
 
   // ---------- Durum ----------
@@ -145,7 +220,8 @@ export class Person extends Agent {
   }
 
   get activity() {
-    return this.brain.activity;
+    if (!this.isCarried) return this.brain.activity;
+    return this.caretaker === this.mother ? 'Annesinin kucağında' : `${this.caretaker.name} kucağında`;
   }
 
   get averageSkill() {
@@ -156,12 +232,35 @@ export class Person extends Agent {
     return this.position.distanceTo(this.home.position) <= HOME_SHELTER_RADIUS;
   }
 
-  /** Hava + ateş + barınak yalıtımı. */
+  /** Üstü kapalı bir yerde mi: yağıştan ve rüzgârdan korunur. */
+  get isSheltered() {
+    return this.isAtHome() && this.home.hasShelter;
+  }
+
+  /** Hava (açıktaysa rüzgârla) + ateş + barınak yalıtımı + giysi − ıslaklık. */
   feltTemperature(world) {
-    let temperature = world.calendar.temperature;
+    const air = this.isSheltered ? world.weather.temperature : world.weather.exposedTemperature;
+    let temperature = air + this.inventory.bestInsulation - this.needs.wetness * WEATHER.WET_CHILL;
     if (world.isNearLitFire(this.position)) temperature += FIRE.HEAT;
     if (this.isAtHome()) temperature += this.home.insulation;
+    if (this.isCarried) temperature += AGING.CARRIED_WARMTH;
     return temperature;
+  }
+
+  #updateWetness(world, dt) {
+    const precipitation = this.isSheltered ? 0 : world.weather.precipitation;
+    const drying = world.isNearLitFire(this.position) ? 4 : precipitation > 0 ? 0 : 1;
+    this.needs.updateWetness(dt, { precipitation, drying });
+  }
+
+  /** Giysiler giyildikçe eskir, ıslakken daha hızlı. */
+  #wearClothes(world, dt) {
+    this.clothesWear += dt;
+    if (this.clothesWear < CLOTHING.CHECK_INTERVAL) return;
+    const rate = this.needs.wetness > CLOTHING.WET_THRESHOLD ? CLOTHING.WET_WEAR : 1;
+    const torn = this.inventory.wearClothes((this.clothesWear / DAY) * rate);
+    this.clothesWear = 0;
+    for (const type of torn) world.log.personal([this], `🧵 ${type.name} eskiyip parçalandı`, LogType.INFO);
   }
 
   // ---------- Döngü ----------
@@ -171,14 +270,31 @@ export class Person extends Agent {
     this.#age(world, dt);
     if (!this.alive) return;
 
+    this.#updateWetness(world, dt);
+    this.#wearClothes(world, dt);
     const harm = this.needs.update(dt, { feltTemperature: this.feltTemperature(world), endurance: this.traits.endurance });
     if (this.needs.health <= 0) return world.killPerson(this, harm ?? 'hastalık');
 
     this.status = clamp01(this.status - dt / PERSON.STATUS_DECAY_TIME);
     this.#updatePregnancy(world);
     this.#forgetOldGrievances(world.now);
+    if (this.isCarried) return this.#stayWithCaretaker(world, dt);
     this.exploration.mark(this.position);
     this.brain.update(world, dt);
+  }
+
+  /** Bebek bakanıyla gezer, o tokken emerek beslenir; değilse verileni yer. */
+  #stayWithCaretaker(world, dt) {
+    const { caretaker } = this;
+    this.position.set(caretaker.position.x, caretaker.position.y);
+    this.needs.rest(dt, 1);
+    this.needs.drink();
+    if (caretaker.needs.food >= AGING.NURSE_MIN_FOOD) {
+      this.needs.food = 1;
+      caretaker.needs.food = Math.max(0, caretaker.needs.food - dt * AGING.NURSE_COST);
+    } else {
+      this.eatFrom(this.inventory, world);
+    }
   }
 
   #age(world, dt) {
@@ -211,9 +327,13 @@ export class Person extends Agent {
 
   // ---------- Beslenme ----------
 
-  /** Bir depodan doyana kadar yer; yanan ateş başındaysa et ve balık pişirilir. */
+  get canCook() {
+    return this.knowledge.knows(Technologies.COOKING);
+  }
+
+  /** Bir depodan doyana kadar yer; pişirmeyi biliyor ve ateş başındaysa et ve balık pişirilir. */
   eatFrom(inventory, world) {
-    const cooked = world.isNearLitFire(this.position);
+    const cooked = this.canCook && world.isNearLitFire(this.position);
     let eaten = 0;
     while (this.needs.food < FULL) {
       const food = inventory.takeBestFood(cooked);
@@ -230,17 +350,32 @@ export class Person extends Agent {
     this.status = clamp01(this.status + delta);
   }
 
-  improveSkill(skill, amount) {
-    this.skills.improve(skill, amount, this.traits.intelligence);
+  /** `hours` saat çalıştı: zekâ öğrenmeyi hızlandırır, yanında usta varsa iki kat öğrenir. */
+  improveSkill(skill, hours, world) {
+    const before = this.skills.get(skill);
+    const mentor = this.#mentorFor(skill, before, world);
+    if (mentor) this.relationTo(mentor).changeRespect(SKILLS.APPRENTICE_RESPECT);
+    this.skills.practice(skill, hours * (0.5 + this.traits.intelligence) * (mentor ? SKILLS.APPRENTICE_RATE : 1));
+    if (before < SKILLS.MASTER_LEVEL && this.skills.get(skill) >= SKILLS.MASTER_LEVEL) {
+      const { name } = SKILL_DEFINITIONS.find((s) => s.id === skill);
+      world.log.add(`🎓 ${this.name}, ${name} ustası oldu`, LogType.BUILD, [this]);
+    }
   }
 
-  improveRandomSkill(amount) {
-    this.improveSkill(this.rng.pick(SKILL_DEFINITIONS).id, amount);
+  /** Yakında bu işi kendisinden iyi bilen bir usta. */
+  #mentorFor(skill, level, world) {
+    if (level >= SKILLS.MASTER_LEVEL) return null;
+    const reachable = (p) => (this.group && p.group === this.group) || p.position.distanceTo(this.position) <= SKILLS.APPRENTICE_RANGE;
+    return world.peopleNear(this.position, SKILLS.COMMUNITY_APPRENTICE_RANGE, this).find((p) => p.skills.get(skill) >= SKILLS.MASTER_LEVEL && reachable(p)) ?? null;
+  }
+
+  improveRandomSkill(hours, world) {
+    this.improveSkill(this.rng.pick(SKILL_DEFINITIONS).id, hours, world);
   }
 
   /** İşin süresini beceri ve özelliklere göre kısaltan çarpan (1 = ortalama). */
   workSpeed(skill, trait = 'strength') {
-    return 0.6 + this.skills.get(skill) * 0.6 + this.traits[trait] * 0.4;
+    return (0.6 + this.skills.get(skill) * 0.6 + this.traits[trait] * 0.4) * (this.group?.workBonus(skill) ?? 1);
   }
 
   // ---------- Sosyal ----------
@@ -249,6 +384,24 @@ export class Person extends Agent {
     this.home?.removeOwner(this);
     this.home = home;
     home.addOwner(this);
+  }
+
+  /** Öfkeye yatkınlık (0..1): adalet duygusu zayıfsa ve açsa artar. */
+  get temper() {
+    const scruples = this.drives.get('justice').weight / 1.4;
+    return clamp01(1 - scruples + (1 - this.needs.food) * 0.3);
+  }
+
+  get isSick() {
+    return this.needs.health < COMMUNITY.SICK_HEALTH;
+  }
+
+  get isKnownThief() {
+    return this.thefts >= 2;
+  }
+
+  dropGrievance(grievance) {
+    this.grievances = this.grievances.filter((g) => g !== grievance);
   }
 
   addGrievance(grievance) {

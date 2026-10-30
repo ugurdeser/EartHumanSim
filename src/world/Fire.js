@@ -23,7 +23,8 @@ export class Fire {
     return used;
   }
 
-  update(dt) {
-    this.fuel = Math.max(0, this.fuel - dt);
+  /** `rain` (0..1): üstü açık ocak yağışta daha hızlı söner. */
+  update(dt, rain = 0) {
+    this.fuel = Math.max(0, this.fuel - dt * (1 + rain * FIRE.RAIN_BURN));
   }
 }

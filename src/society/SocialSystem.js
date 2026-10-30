@@ -2,20 +2,27 @@ import { Turkish } from '../core/Turkish.js';
 import { REPRODUCTION } from '../config.js';
 import { LogType } from '../core/EventLog.js';
 import { Kinship } from './Kinship.js';
+import { ConflictSystem } from './ConflictSystem.js';
 import { FamilyRegistry } from './FamilyRegistry.js';
 import { GroupManager } from './GroupManager.js';
 
 const COUPLE_ATTRACTION_THRESHOLD = 0.55;
 const PROPOSAL_ACCEPT_THRESHOLD = 0.45;
 
-const THEFT_WITNESS_RADIUS = 150;
+const PLAY_HOURS = 1 / 3; // oyun da pratiktir
 
 /** Kişiler arası etkileşimlerin kuralları (çift olma, hediye, hırsızlık, ceza ...). */
 export class SocialSystem {
   constructor(world) {
     this.world = world;
-    this.groups = new GroupManager();
+    this.groups = new GroupManager(world);
     this.families = new FamilyRegistry(world);
+    this.conflicts = new ConflictSystem(world);
+  }
+
+  update() {
+    this.groups.update(this.world);
+    this.conflicts.update();
   }
 
   get log() {
@@ -25,14 +32,10 @@ export class SocialSystem {
   // ---------- Bağlılık / Oyun ----------
 
   chat(a, b) {
+    if (this.conflicts.soursChat(a, b)) return;
     a.relationTo(b).changeAffinity(0.1);
     b.relationTo(a).changeAffinity(0.1);
-    const joined = this.groups.invite(a, b);
-    if (joined && joined.size === 2) {
-      this.log.add(`🤝 ${a.name} ve ${b.name} "${joined.name}" topluluğunu kurdu`, LogType.SOCIAL, [a, b]);
-    } else if (joined) {
-      this.log.add(`🤝 ${a.name} ve ${b.name} artık aynı toplulukta (${joined.name})`, LogType.SOCIAL, [a, b]);
-    }
+    this.groups.meet(a, b);
     // Sohbet bilgi paylaşımıdır: iki taraf da birbirine bir şey öğretebilir
     this.world.invention.tryTeach(a, b);
     this.world.invention.tryTeach(b, a);
@@ -41,8 +44,8 @@ export class SocialSystem {
   play(a, b) {
     a.relationTo(b).changeAffinity(0.08);
     b.relationTo(a).changeAffinity(0.08);
-    a.improveRandomSkill(0.02);
-    b.improveRandomSkill(0.02);
+    a.improveRandomSkill(PLAY_HOURS, this.world);
+    b.improveRandomSkill(PLAY_HOURS, this.world);
     this.world.invention.tryInvent(a, 0.3);
   }
 
@@ -114,6 +117,8 @@ export class SocialSystem {
     a.partner = b;
     b.partner = a;
     const family = this.#foundFamily(a, b);
+    const [husband, wife] = a.isFemale ? [b, a] : [a, b];
+    this.groups.uniteCouple(husband, wife);
     this.log.add(`💍 ${a.name} ve ${b.name} evlendi, ${family.name} kuruldu`, LogType.LOVE, [a, b]);
     for (const spouse of [a, b]) this.#notifyParents(spouse, `💍 ${Kinship.childWord(spouse)} ${spouse.name} evlendi`);
   }
@@ -127,6 +132,17 @@ export class SocialSystem {
     const family = this.families.found(husband, wife, keep);
     if (drop !== keep && drop.owners.size === 0) this.world.removeHome(drop);
     return family;
+  }
+
+  /** Boşanma: bakılan çocuklar annede kalır, erkek kendi yuvasını kurar. */
+  divorce(a, b) {
+    a.partner = null;
+    b.partner = null;
+    for (const [x, y] of [[a, b], [b, a]]) x.relationTo(y).changeAttraction(-0.5);
+    const leaver = a.isFemale ? b : a;
+    this.log.add(`💔 ${a.name} ve ${b.name} boşandı`, LogType.LOVE, [a, b]);
+    this.families.leave(leaver);
+    this.world.settleAlone(leaver);
   }
 
   // ---------- Statü ----------
@@ -150,31 +166,11 @@ export class SocialSystem {
   // ---------- Adalet ----------
 
   reportTheft(thief, home, portions) {
-    this.log.add(`🕵 ${thief.name} başkasının deposundan ${portions} porsiyon çaldı`, LogType.CONFLICT, [thief]);
-    this.log.personal([...home.owners], `🕵 ${thief.name} deposundan ${portions} porsiyon yiyecek çaldı`, LogType.CONFLICT);
-    thief.changeStatus(-0.05);
-    const witnesses = new Set([
-      ...this.world.peopleNear(thief.position, THEFT_WITNESS_RADIUS, thief),
-      ...home.owners,
-    ]);
-    for (const person of witnesses) {
-      if (person === thief || !person.alive || !person.isAdult) continue;
-      person.relationTo(thief).changeAffinity(-0.15);
-      person.addGrievance({ thief, victimHome: home, portions, time: this.world.now });
-    }
+    this.conflicts.reportTheft(thief, home, portions);
   }
 
   punish(judge, grievance) {
-    const { thief, victimHome } = grievance;
-    thief.changeStatus(-0.12);
-    judge.changeStatus(0.04);
-    judge.relationTo(thief).changeAffinity(-0.2);
-    thief.relationTo(judge).changeAffinity(-0.2);
-    thief.relationTo(judge).changeRespect(0.1);
-    thief.inventory.transferTo(victimHome.storage, (t) => t.isFood, grievance.portions);
-    // Aynı hırsızlık için diğer tanıkların şikayeti de kapanır
-    for (const person of this.world.people) person.resolveGrievance(thief, victimHome);
-    this.log.add(`⚖ ${judge.name}, ${Turkish.ablative(thief.name)} hesap sordu`, LogType.CONFLICT, [judge, thief]);
+    this.conflicts.judge(judge, grievance);
   }
 
   #notifyParents(person, message) {

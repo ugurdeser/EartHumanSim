@@ -1,8 +1,11 @@
+import { AgentLayer } from '../render/AgentLayer.js';
+import { ChunkLayer } from '../render/ChunkLayer.js';
+
 const DRAG_THRESHOLD = 4;
 const PICK_RADIUS_PX = 12;
 const ZOOM_STEP = 1.15;
 
-/** Fare/klavye: tekerlek = zoom, sürükle = kaydır, tıkla = kişi seç. */
+/** Fare/klavye: tekerlek = zoom, sürükle = kaydır, tıkla = kişi, hayvan ya da bitki seç. */
 export class InputController {
   constructor({ canvas, camera, world, selection, game }) {
     this.canvas = canvas;
@@ -69,7 +72,22 @@ export class InputController {
         bestDistance = d;
       }
     }
-    this.selection.select(best);
+    if (best) this.selection.select(best);
+    else this.#pickAnimal(point, maxDistance);
+  }
+
+  /** Haritada görünen hayvanlar seçilebilir (uzaktan balıklar çizilmez). */
+  #pickAnimal(point, maxDistance) {
+    const found = this.world.nearestAnimal(point, maxDistance, (a) => AgentLayer.isVisible(a, this.camera));
+    if (found) this.selection.selectAnimal(found.animal);
+    else this.#pickPlant(point, maxDistance);
+  }
+
+  /** Bitkiler yalnızca tek tek çizildikleri yakınlıkta seçilebilir. */
+  #pickPlant(point, maxDistance) {
+    const plant = this.camera.zoom >= ChunkLayer.maxZoom ? this.world.plantAt(point, maxDistance) : null;
+    if (plant) this.selection.selectPlant(plant);
+    else this.selection.clear();
   }
 
   #onKeyDown(e) {

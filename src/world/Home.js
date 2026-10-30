@@ -76,7 +76,7 @@ export class Home extends Entity {
     return true;
   }
 
-  update(dt) {
-    this.fire.update(dt);
+  update(dt, precipitation) {
+    this.fire.update(dt, this.hasShelter ? 0 : precipitation);
   }
 }

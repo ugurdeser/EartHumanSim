@@ -11,6 +11,7 @@ export class Chunk {
     this.trees = [];
     this.bushes = [];
     this.grass = [];
+    this.ecology = null; // bitkiler büyümeye başlayınca (PlantEcology)
     this.version = 0; // görünüm değiştikçe artar (önbellek geçersizleşir)
     this.cache = null;
     this.lastUsed = 0;
@@ -26,8 +27,12 @@ export class Chunk {
 
   #lists() {
     if (!this.cache) {
-      const standing = this.trees.filter((t) => !t.felled);
-      this.cache = { standing, food: [...this.bushes, ...standing.filter((t) => t.fruitful)] };
+      const standing = this.trees.filter((t) => t.alive);
+      this.cache = {
+        standing,
+        mature: standing.filter((t) => t.isMature),
+        food: [...this.bushes.filter((b) => b.alive), ...standing.filter((t) => t.fruitful)],
+      };
     }
     return this.cache;
   }
@@ -36,13 +41,18 @@ export class Chunk {
     return this.#lists().standing;
   }
 
+  /** Kesilebilecek / gölgesinde dinlenilebilecek yetişkin ağaçlar. */
+  get matureTrees() {
+    return this.#lists().mature;
+  }
+
   get foodSources() {
     return this.#lists().food;
   }
 
-  /** İçindeki bir şey değiştiyse bellekten atılmamalı. */
+  /** İçindeki bir şey değiştiyse ya da bitkileri yaşıyorsa bellekten atılmamalı. */
   get isModified() {
-    return this.bushes.some((b) => b.touched) || this.trees.some((t) => t.touched);
+    return this.ecology !== null || this.bushes.some((b) => b.touched) || this.trees.some((t) => t.touched);
   }
 
   markChanged() {

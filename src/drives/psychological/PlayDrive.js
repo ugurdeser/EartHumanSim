@@ -22,8 +22,8 @@ export class PlayDrive extends Drive {
     const mate = SocialQueries.playmate(person, world);
     if (!mate) {
       return new PerformAction('Tek başına beceri geliştiriyor', 15 * MINUTE, {
-        onComplete: (p) => {
-          p.improveRandomSkill(0.015);
+        onComplete: (p, w) => {
+          p.improveRandomSkill(0.25, w);
           this.relieve(0.7);
         },
       });

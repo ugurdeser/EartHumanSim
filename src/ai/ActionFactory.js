@@ -1,9 +1,11 @@
-import { HOUR } from '../config.js';
+import { FIRE, HOUR } from '../config.js';
 import { CallbackAction } from '../actions/CallbackAction.js';
 import { MoveToAction } from '../actions/MoveToAction.js';
+import { PerformAction } from '../actions/PerformAction.js';
 import { SequenceAction } from '../actions/SequenceAction.js';
 import { WanderAction } from '../actions/WanderAction.js';
 import { FUEL_TYPES, Items } from '../items/Items.js';
+import { Technologies } from '../tech/Technologies.js';
 import { MaterialSources } from './materials/MaterialSources.js';
 
 const HOME_FETCH_RANGE = 2000;
@@ -58,14 +60,28 @@ export class ActionFactory {
     return MaterialSources.gather(person, world, type);
   }
 
-  /** Yuvadaki ocağa yakıt atar (önce üzerindekinden, sonra depodan); yakıt yoksa da devam edilir. */
+  /**
+   * Yuvadaki ocağa yakıt atar (önce üzerindekinden, sonra depodan); yakıt yoksa da devam edilir.
+   * Sönük ocağı yalnızca ateş yakmayı bilen tutuşturabilir.
+   */
   static feedFire(person) {
-    return new CallbackAction('Ateşe odun atıyor', (p) => {
+    const feed = new CallbackAction('Ateşe odun atıyor', (p) => {
       const fire = p.home.fire;
+      if (!ActionFactory.canKindle(p)) return;
       for (const type of FUEL_TYPES) {
         for (const inventory of [p.inventory, p.home.storage]) inventory.remove(type, fire.feed(type, inventory.count(type)));
       }
     });
+    if (person.home.fire.isLit || !ActionFactory.canKindle(person)) return feed;
+    return new SequenceAction('Ocağı yakıyor', [
+      new PerformAction('Ateş yakıyor', FIRE.LIGHT_TIME / person.workSpeed('crafting', 'agility')),
+      feed,
+    ]);
+  }
+
+  /** Ocak zaten yanıyorsa ya da kişi ateş yakmayı biliyorsa ateşe yakıt atılabilir. */
+  static canKindle(person) {
+    return person.home.fire.isLit || person.knowledge.knows(Technologies.FIRE_MAKING);
   }
 
   /** Yakıt bul: baltası varsa odun, yoksa dal. */
@@ -77,7 +93,12 @@ export class ActionFactory {
     return new MoveToAction(label, world.randomPointNear(person.position, 900), { arriveDistance: 5 });
   }
 
-  static idle(person) {
+  static idle(person, world) {
+    if (person.needsCare) {
+      const { center, radius } = person.roamArea(world);
+      const label = person.isConfined ? 'Evde bebeğiyle' : center === person.group?.center ? 'Bakıcısının yanında oynuyor' : 'Evin çevresinde oynuyor';
+      return new WanderAction(label, center, radius, 0.5 * HOUR);
+    }
     const center = person.isChild && person.mother?.alive ? person.mother.position : person.home.position;
     return new WanderAction('Dolaşıyor', center, person.isChild ? 40 : 150, 0.5 * HOUR);
   }

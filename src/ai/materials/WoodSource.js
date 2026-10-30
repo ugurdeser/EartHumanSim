@@ -29,7 +29,7 @@ export class WoodSource extends MaterialSource {
           if (tree.felled) return;
           p.inventory.add(Items.WOOD, tree.fell());
           w.markChanged(tree.position);
-          p.improveSkill('woodcutting', 0.02);
+          p.improveSkill('woodcutting', 1.5, w);
           const broken = p.inventory.wearTool(Capability.CHOP);
           if (broken) w.log.personal([p], `💥 ${broken.name} kırıldı`, LogType.INFO);
         },

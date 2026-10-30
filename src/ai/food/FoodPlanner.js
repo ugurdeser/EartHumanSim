@@ -2,12 +2,19 @@ import { FishingProvider } from './FishingProvider.js';
 import { ForageProvider } from './ForageProvider.js';
 import { HomeStorageProvider } from './HomeStorageProvider.js';
 import { HuntingProvider } from './HuntingProvider.js';
+import { MilkingProvider } from './MilkingProvider.js';
 
 /**
  * Yiyecek stratejileri arasından en düşük maliyetliyi seçer.
  * Yeni bir yöntem (ör. tarım) eklemek için PROVIDERS listesine bir sınıf eklemek yeterli.
  */
-const PROVIDERS = Object.freeze([new HomeStorageProvider(), new ForageProvider(), new FishingProvider(), new HuntingProvider()]);
+const PROVIDERS = Object.freeze([
+  new HomeStorageProvider(),
+  new ForageProvider(),
+  new FishingProvider(),
+  new MilkingProvider(),
+  new HuntingProvider(),
+]);
 
 export class FoodPlanner {
   /** @param {{excludeHome?: boolean}} options İstif için yuvadan almak anlamsız. */

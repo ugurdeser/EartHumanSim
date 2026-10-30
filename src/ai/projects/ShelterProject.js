@@ -66,7 +66,7 @@ export class ShelterProject extends Project {
       new PerformAction(`${home.nextShelter?.name ?? 'Barınak'} inşa ediyor`, SESSION, {
         onComplete: (p, w) => {
           const leveledUp = home.build(WORK_PER_SESSION * p.workSpeed('building'));
-          p.improveSkill('building', 0.03);
+          p.improveSkill('building', SESSION / HOUR, w);
           onWorkDone();
           if (!leveledUp) return;
           p.changeStatus(0.08);

@@ -1,3 +1,15 @@
+/** Giysinin giyildiği yer: her yerden en sıcak olan giyilir, korumalar toplanır. */
+export const ClothingSlot = Object.freeze({
+  HEAD: 'Baş',
+  HANDS: 'Eller',
+  INNER: 'İç giyim',
+  MIDDLE: 'Üst giyim',
+  LEGS: 'Bacaklar',
+  FEET: 'Ayaklar',
+  OUTER: 'Dış giyim',
+  BACK: 'Sırt',
+});
+
 /** Bir eşya türünün değişmez tanımı (soyut). */
 export class ItemType {
   constructor(id, name, { weight, icon = '•' }) {
@@ -69,5 +81,22 @@ export class ToolType extends ItemType {
 
   can(capability) {
     return this.capabilities.has(capability);
+  }
+}
+
+/** Giyilen eşya: soğuktan korur (insulation °C), giyildikçe yıpranır (durability: gün). */
+export class ClothingType extends ToolType {
+  constructor(id, name, { insulation, slot, ...rest }) {
+    super(id, name, { durability: 1, capabilities: [], ...rest });
+    this.insulation = insulation;
+    this.slot = slot;
+  }
+}
+
+/** Sırt çantası: sırta takılır, taşıma kapasitesini artırır (carryBonus kg). */
+export class BagType extends ClothingType {
+  constructor(id, name, { carryBonus, ...rest }) {
+    super(id, name, { insulation: 0, slot: ClothingSlot.BACK, ...rest });
+    this.carryBonus = carryBonus;
   }
 }

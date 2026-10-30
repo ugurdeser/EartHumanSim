@@ -16,6 +16,7 @@ import { clamp, clamp01 } from '../core/MathUtils.js';
 export class Drive {
   static MAX_RAW = 1.5;
   static WEIGHT_RANGE = [0.5, 1.4];
+  static FOR_DEPENDENTS = false; // küçük çocuklarda da çalışır mı (gerisi onları evden uzaklaştırır)
 
   constructor(weight = 1) {
     if (new.target === Drive) throw new Error('Drive soyut bir sınıftır');
@@ -42,7 +43,7 @@ export class Drive {
   }
 
   evaluate(person, world, dt) {
-    if (!this.isApplicable(person)) {
+    if (!this.isApplicable(person) || (person.needsCare && !this.constructor.FOR_DEPENDENTS)) {
       this.raw = 0;
       this.urgency = 0;
       return 0;

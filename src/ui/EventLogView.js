@@ -5,7 +5,7 @@ const MAX_VISIBLE = 80;
 export class EventLogView {
   constructor(log) {
     this.list = el('ul', { class: 'event-log' });
-    this.root = el('section', { class: 'panel log-panel' }, el('h3', { text: 'Olaylar' }), this.list);
+    this.root = el('div', { class: 'tab-view' }, this.list);
     log.entries.slice(0, MAX_VISIBLE).reverse().forEach((entry) => this.#prepend(entry));
     log.subscribe((entry) => this.#prepend(entry));
   }

@@ -11,20 +11,20 @@ const CHASE_TIMEOUT = 10 * MINUTE;
 const STRIKE_DISTANCE = 4;
 const MIN_HERD_TO_HUNT = 3; // küçük sürülere dokunulmaz ki yenilenebilsinler
 
-/** Mızrakla koyun avlamak. */
+/** Mızrakla av. Et dışında ne çıkarsa (post ...) o da alınır; post kaynağı da bunu kullanır. */
 export class HuntingProvider extends FoodProvider {
   constructor() {
     super('hunting');
   }
 
-  plan(person, world) {
+  /** Avlanabilecek en yakın hayvan: { animal, distance } ya da null. */
+  static findPrey(person, world) {
     if (!person.isAdult || !person.inventory.hasCapability(Capability.HUNT)) return null;
-    const found = world.nearestAnimal(person.position, SEARCH_RADIUS, (a) => a.isHuntable && (a.herd?.size ?? 0) >= MIN_HERD_TO_HUNT);
-    if (!found) return null;
-    const prey = found.animal;
-    const expected = prey.meat.amount * Items.MEAT.cookedNutrition * 0.5;
-    const cost = (found.distance / person.walkSpeed + CHASE_TIMEOUT) / expected;
-    const action = new SequenceAction(`${prey.species.name} avına çıktı`, [
+    return world.nearestAnimal(person.position, SEARCH_RADIUS, (a) => a.isHuntable && (a.herd?.size ?? 0) >= MIN_HERD_TO_HUNT);
+  }
+
+  static huntAction(prey) {
+    return new SequenceAction(`${prey.species.name} avına çıktı`, [
       new MoveToAction('Avına sessizce yaklaşıyor', () => (prey.alive ? prey.position : null), { arriveDistance: 30 }),
       new MoveToAction(`${prey.species.name} kovalıyor`, () => (prey.alive ? prey.position : null), {
         arriveDistance: STRIKE_DISTANCE,
@@ -33,6 +33,16 @@ export class HuntingProvider extends FoodProvider {
       }),
       new CallbackAction('Mızrağını savuruyor', (p, w) => Combat.hunt(p, prey, w)),
     ]);
-    return { cost, action };
+  }
+
+  plan(person, world) {
+    const found = HuntingProvider.findPrey(person, world);
+    if (!found) return null;
+    const prey = found.animal;
+    const meat = prey.slaughterYields().find((y) => y.type === Items.MEAT)?.amount ?? 0;
+    if (meat === 0) return null;
+    const expected = meat * Items.MEAT.cookedNutrition * 0.5;
+    const cost = (found.distance / person.walkSpeed + CHASE_TIMEOUT) / expected;
+    return { cost, action: HuntingProvider.huntAction(prey) };
   }
 }

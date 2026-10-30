@@ -45,6 +45,12 @@ export class Camera {
     this.#clampCenter();
   }
 
+  /** Noktaya gider; uzaktaysa en az `minZoom` kadar yakınlaşır. */
+  focusOn(position, minZoom) {
+    this.zoom = clamp(Math.max(this.zoom, minZoom), this.minZoom, this.maxZoom);
+    this.centerOn(position);
+  }
+
   centerOn(position) {
     this.x = position.x;
     this.y = position.y;

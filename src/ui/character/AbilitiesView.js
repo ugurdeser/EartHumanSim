@@ -1,8 +1,8 @@
-import { ALL_TECHNOLOGIES } from '../../tech/Technologies.js';
+import { Skills } from '../../agents/Skills.js';
 import { el, percent } from '../dom.js';
 import { BarView } from './BarView.js';
 
-/** Kalıtsal özellikler (zekâ dahil), beceriler ve bilinen teknolojiler. */
+/** Kalıtsal özellikler (zekâ dahil) ve beceriler. */
 export class AbilitiesView {
   constructor(person) {
     this.person = person;
@@ -12,7 +12,6 @@ export class AbilitiesView {
       return { id: t.id, bar };
     });
     this.skillBars = person.skills.entries().map((s) => ({ id: s.id, bar: new BarView(s.name, 'skill') }));
-    this.knowledge = el('ul', { class: 'tech-list' });
     this.root = el(
       'div',
       { class: 'abilities' },
@@ -21,8 +20,6 @@ export class AbilitiesView {
       el('p', { class: 'hint', text: AbilitiesView.#parentsLine(person) }),
       el('h4', { text: 'Beceriler' }),
       this.skillBars.map((s) => s.bar.row),
-      el('h4', { text: 'Bildiği teknikler' }),
-      this.knowledge,
     );
   }
 
@@ -40,11 +37,10 @@ export class AbilitiesView {
   update() {
     const p = this.person;
     for (const { id, bar } of this.traitBars) bar.set(p.traits[id], percent(p.traits[id]));
-    for (const { id, bar } of this.skillBars) bar.set(p.skills.get(id), percent(p.skills.get(id)));
-    this.knowledge.replaceChildren(
-      ...ALL_TECHNOLOGIES.map((tech) =>
-        el('li', { class: p.knowledge.knows(tech) ? 'known' : 'unknown' }, `${p.knowledge.knows(tech) ? '✔' : '·'} ${tech.name}`),
-      ),
-    );
+    for (const { id, bar } of this.skillBars) {
+      const level = p.skills.get(id);
+      bar.set(level, `${Math.round(p.skills.hoursOf(id)).toLocaleString('tr')} sa`);
+      bar.row.title = `${Skills.rankOf(level)} · ${percent(level)} (ustalık 10.000 saat)`;
+    }
   }
 }

@@ -22,8 +22,9 @@ export class TimeControls {
   update() {
     const { clock, calendar } = this.game;
     const season = calendar.season;
-    this.clockLabel.textContent = `Yıl ${calendar.year} · ${season.icon} ${season.name} ${calendar.dayOfSeason}. gün`;
-    this.weatherLabel.textContent = `${clock.formatTime()} ${clock.isNight ? '🌙' : '☀️'} · ${calendar.temperature.toFixed(0)}°C`;
+    this.clockLabel.textContent = `${calendar.date}, Yıl ${calendar.year} · ${season.icon} ${season.name}`;
+    const { weather } = this.game.world;
+    this.weatherLabel.textContent = `${clock.formatTime()} ${clock.isNight ? '🌙' : '🕑'} · ${weather.temperature.toFixed(0)}°C · ${weather.describe()}`;
     this.pauseButton.textContent = clock.paused ? '▶' : '⏸';
     this.speedButtons.forEach((button, i) => button.classList.toggle('active', SIM.SPEEDS[i] === clock.timeScale));
   }

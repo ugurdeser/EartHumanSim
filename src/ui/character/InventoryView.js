@@ -1,19 +1,23 @@
 import { el, percent } from '../dom.js';
 
-/** Kişinin üstündekiler ve yuvasının deposu/ocağı. */
+/** Kişinin giydikleri ve taşıdıkları (yuvanın deposu ev penceresinde). */
 export class InventoryView {
   constructor(person) {
     this.person = person;
+    this.worn = el('ul', { class: 'items' });
+    this.wornTitle = el('h4');
     this.carried = el('ul', { class: 'items' });
     this.carriedTitle = el('h4');
-    this.stored = el('ul', { class: 'items' });
-    this.fire = el('p', { class: 'hint' });
-    this.root = el('div', {}, this.carriedTitle, this.carried, el('h4', { text: 'Yuvanın deposu' }), this.fire, this.stored);
+    this.root = el('div', {}, this.wornTitle, this.worn, this.carriedTitle, this.carried);
   }
 
-  static #items(inventory) {
-    const entries = inventory.entries();
-    if (entries.length === 0) return [el('li', { class: 'hint', text: 'Boş' })];
+  /** Bir envanterin satırları (ev deposu da bunu kullanır). */
+  static items(inventory) {
+    return InventoryView.#rows(inventory.entries());
+  }
+
+  static #rows(entries, empty = 'Boş') {
+    if (entries.length === 0) return [el('li', { class: 'hint', text: empty })];
     return entries.map(({ type, count, condition }) =>
       el(
         'li',
@@ -25,12 +29,10 @@ export class InventoryView {
   }
 
   update() {
-    const p = this.person;
-    const inv = p.inventory;
-    this.carriedTitle.textContent = `Üstündekiler (${inv.weight.toFixed(1)} / ${inv.capacity.toFixed(0)} kg)`;
-    this.carried.replaceChildren(...InventoryView.#items(inv));
-    const fire = p.home.fire;
-    this.fire.textContent = fire.isLit ? `🔥 Ocak yanıyor (yakıt %${Math.round(fire.level * 100)})` : 'Ocak sönük';
-    this.stored.replaceChildren(...InventoryView.#items(p.home.storage));
+    const inv = this.person.inventory;
+    this.wornTitle.textContent = `Giydikleri (+${inv.bestInsulation.toFixed(0)}°C)`;
+    this.worn.replaceChildren(...InventoryView.#rows(inv.wornEntries, 'Hiçbir şey giymiyor'));
+    this.carriedTitle.textContent = `Taşıdıkları (${inv.weight.toFixed(1)} / ${inv.carryLimit.toFixed(0)} kg)`;
+    this.carried.replaceChildren(...InventoryView.#rows(inv.carriedEntries));
   }
 }

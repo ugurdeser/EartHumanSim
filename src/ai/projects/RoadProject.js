@@ -1,4 +1,4 @@
-import { MINUTE, ROAD } from '../../config.js';
+import { HOUR, MINUTE, ROAD } from '../../config.js';
 import { LogType } from '../../core/EventLog.js';
 import { MoveToAction } from '../../actions/MoveToAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
@@ -54,7 +54,7 @@ export class RoadProject extends Project {
             if (!p.inventory.has(Items.STONE)) break;
             if (w.roads.add(tile)) p.inventory.remove(Items.STONE, 1);
           }
-          p.improveSkill('building', 0.02);
+          p.improveSkill('building', (TIME_PER_TILE * tiles.length) / HOUR, w);
           onWorkDone();
           if (firstRoad) w.log.add(`🛤 ${p.name} ilk taş yolu döşedi`, LogType.BUILD, [p]);
         },

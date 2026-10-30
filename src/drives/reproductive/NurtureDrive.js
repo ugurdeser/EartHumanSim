@@ -1,5 +1,6 @@
 import { Turkish } from '../../core/Turkish.js';
-import { MINUTE } from '../../config.js';
+import { Items } from '../../items/Items.js';
+import { COMMUNITY, HOUR, MINUTE, SKILLS } from '../../config.js';
 import { CallbackAction } from '../../actions/CallbackAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
@@ -11,6 +12,7 @@ import { DriveCategory } from '../DriveCategory.js';
 const HUNGRY_THRESHOLD = 0.35;
 const FAR_DISTANCE = 150;
 const MEAL_PORTIONS = 3;
+const CARE_INTERVAL = 6 * HOUR; // uzakta da olsa bu aralıkla çocuğuna uğrar
 
 /** Çocukları beslemek, yanlarında olmak ve onlara bildiklerini öğretmek. */
 export class NurtureDrive extends Drive {
@@ -25,18 +27,22 @@ export class NurtureDrive extends Drive {
   }
 
   isApplicable(person) {
-    return person.isAdult && person.dependentChildren.length > 0;
+    return person.isAdult && person.wards.length > 0;
   }
 
-  computeRaw(person) {
-    let best = 0;
+  computeRaw(person, world) {
+    const onDuty = person.group?.nanny === person && !world.clock.isNight;
+    let best = onDuty ? COMMUNITY.DAYCARE_URGE : 0;
     this.focus = null;
-    for (const child of person.dependentChildren) {
+    for (const child of person.wards) {
       const hunger = 1 - child.needs.food;
+      const thirst = child.needsCare ? 1 - child.needs.water : 0;
+      const overdue = world.now - child.lastCaredAt > CARE_INTERVAL;
       const distance = person.position.distanceTo(child.position);
       const score = Math.max(
         hunger > HUNGRY_THRESHOLD ? hunger * 1.3 : 0,
-        distance > FAR_DISTANCE ? 0.55 : 0,
+        thirst > HUNGRY_THRESHOLD ? thirst * 1.3 : 0,
+        distance > FAR_DISTANCE && overdue ? 0.55 : 0,
         child.needs.health < 0.5 ? 0.8 : 0,
         child.needs.warmth < 0.5 ? 0.9 : 0,
       );
@@ -50,8 +56,9 @@ export class NurtureDrive extends Drive {
 
   createAction(person, world) {
     const child = this.focus;
-    if (!child?.alive) return null;
-    return 1 - child.needs.food > HUNGRY_THRESHOLD ? this.#feed(person, world, child) : this.#care(person, child);
+    if (!child?.alive) return person.group?.nanny === person ? this.#mindChildren(person) : null;
+    const hungry = 1 - child.needs.food > HUNGRY_THRESHOLD;
+    return (hungry ? this.#feed(person, world, child) : null) ?? this.#care(person, child);
   }
 
   #feed(person, world, child) {
@@ -68,16 +75,40 @@ export class NurtureDrive extends Drive {
     ]);
   }
 
-  /** Çocuğun yanında vakit geçirir; zekâsına göre ona bir şeyler öğretebilir. */
+  /** Bakıcı gündüz köy merkezinde çocukların başında durur, susayanlara su verir. */
+  #mindChildren(person) {
+    const { group } = person;
+    return new SequenceAction('Çocuklara bakmaya gidiyor', [
+      ActionFactory.goTo('Köy merkezine gidiyor', group.center, { arriveDistance: 4 }),
+      new PerformAction('Topluluğun çocuklarına bakıyor', COMMUNITY.DAYCARE_SESSION, {
+        onComplete: (p, w) => {
+          for (const child of group.daycareChildren) {
+            child.lastCaredAt = w.now;
+            child.needs.drink();
+            w.invention.tryTeach(p, child);
+          }
+          this.relieve(0.5);
+        },
+      }),
+    ]);
+  }
+
+  /** Çocuğun yanında vakit geçirir, küçükse su içirir; zekâsına göre ona bir şeyler öğretebilir. */
   #care(person, child) {
     return new SequenceAction(`${Turkish.dative(child.name)} bakıyor`, [
       ActionFactory.goToPerson(`${Turkish.genitive(child.name)} yanına gidiyor`, child, 4),
       new PerformAction(`${child.name} ile ilgileniyor`, 15 * MINUTE, {
         onComplete: (p, w) => {
+          child.lastCaredAt = w.now;
+          if (child.needsCare) {
+            child.needs.drink();
+            p.inventory.transferTo(child.inventory, (t) => t === Items.WATER); // testideki su bir dahaki sefere kalır
+          }
           child.drives.get('affiliation').relieve(0.5);
           child.relationTo(p).changeAffinity(0.05);
           p.relationTo(child).changeAffinity(0.05);
           w.invention.tryTeach(p, child);
+          if (!child.isDependent) child.improveSkill(p.skills.best, SKILLS.TEACHING_HOURS, w);
           this.relieve(0.5);
         },
       }),

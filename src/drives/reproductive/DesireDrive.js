@@ -1,5 +1,5 @@
 import { Turkish } from '../../core/Turkish.js';
-import { MINUTE } from '../../config.js';
+import { CONFLICT, MINUTE } from '../../config.js';
 import { CallbackAction } from '../../actions/CallbackAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
@@ -27,7 +27,25 @@ export class DesireDrive extends Drive {
   }
 
   createAction(person, world) {
+    const lover = person.partner ? this.#temptation(person, world) : null;
+    if (lover) return this.#affair(lover);
     return person.partner ? this.#withPartner(person.partner) : this.#propose(person, world);
+  }
+
+  /** Evli kişinin, eşinden çok çekildiği biri varsa gözü dışarı kayabilir. */
+  #temptation(person, world) {
+    if (person.drives.get('justice').weight >= CONFLICT.GREED_SCRUPLES) return null;
+    if (!world.rng.chance(CONFLICT.TEMPTATION_CHANCE * world.social.conflicts.intensity)) return null;
+    return SocialQueries.lover(person, world, CONFLICT.TEMPTATION_ATTRACTION);
+  }
+
+  #affair(lover) {
+    return new SequenceAction(`${Turkish.genitive(lover.name)} yanına gizlice gidiyor`, [
+      ActionFactory.goToPerson(`${Turkish.genitive(lover.name)} yanına gidiyor`, lover, 3),
+      new PerformAction(`${lover.name} ile gizlice görüşüyor`, 20 * MINUTE, {
+        onComplete: (p, w) => w.social.conflicts.affair(p, lover),
+      }),
+    ]);
   }
 
   #withPartner(partner) {

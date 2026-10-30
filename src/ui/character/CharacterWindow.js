@@ -1,15 +1,20 @@
-import { el } from '../dom.js';
+import { el, startWindowDrag } from '../dom.js';
 import { AbilitiesView } from './AbilitiesView.js';
+import { CapabilitiesView } from './CapabilitiesView.js';
 import { DrivesView } from './DrivesView.js';
 import { HistoryView } from './HistoryView.js';
+import { HomeView } from './HomeView.js';
 import { InfoView } from './InfoView.js';
 import { InventoryView } from './InventoryView.js';
 import { NeedsView } from './NeedsView.js';
+import { RelationsView } from './RelationsView.js';
 
 const TABS = [
   { id: 'history', label: 'Hayat Hikâyesi' },
   { id: 'drives', label: 'Güdüler' },
   { id: 'abilities', label: 'Yetenekler' },
+  { id: 'capabilities', label: 'Kabiliyetler' },
+  { id: 'relations', label: 'İlişkiler' },
   { id: 'inventory', label: 'Envanter' },
   { id: 'info', label: 'Bilgiler' },
 ];
@@ -28,11 +33,13 @@ export class CharacterWindow {
 
     this.title = el('h3');
     this.followButton = el('button', { class: 'icon', title: 'Kamerayla takip et (F)', onClick: () => this.#toggleFollow() }, '🎥');
+    this.homeButton = el('button', { class: 'icon', title: 'Yuva bilgileri', onClick: () => this.#toggleHome() }, '🏠');
     this.header = el(
       'header',
-      { onMouseDown: (e) => this.#startDrag(e) },
+      { onMouseDown: (e) => startWindowDrag(e, this.root) },
       this.title,
       this.followButton,
+      this.homeButton,
       el('button', { class: 'icon', title: 'Kapat (Esc)', onClick: () => selection.clear() }, '✕'),
     );
     this.activity = el('div', { class: 'activity' });
@@ -64,8 +71,11 @@ export class CharacterWindow {
       history: new HistoryView(person, this.world),
       drives: new DrivesView(person),
       abilities: new AbilitiesView(person),
+      capabilities: new CapabilitiesView(person),
       inventory: new InventoryView(person),
-      info: new InfoView(person),
+      info: new InfoView(person, this.world),
+      relations: new RelationsView(person, this.world),
+      home: new HomeView(() => person.home),
     };
     this.needsSlot.replaceChildren(needs.root);
     this.#showTab(this.activeTab);
@@ -74,8 +84,19 @@ export class CharacterWindow {
   #showTab(tabId) {
     this.activeTab = tabId;
     this.tabButtons.forEach((b) => b.classList.toggle('active', b.dataset.tab === tabId));
+    this.homeButton.classList.toggle('active', tabId === 'home');
     this.body.replaceChildren(this.views[tabId].root);
     this.update();
+  }
+
+  /** Ev butonu yuva görünümünü açar; tekrar basınca önceki sekmeye dönülür. */
+  #toggleHome() {
+    if (this.activeTab === 'home') {
+      this.#showTab(this.tabBeforeHome ?? TABS[0].id);
+      return;
+    }
+    this.tabBeforeHome = this.activeTab;
+    this.#showTab('home');
   }
 
   #toggleFollow() {
@@ -88,27 +109,6 @@ export class CharacterWindow {
     if (!link) return;
     const person = this.world.findPersonById(Number(link.dataset.id));
     if (person) this.selection.select(person, { follow: person.alive && this.selection.follow });
-  }
-
-  #startDrag(e) {
-    if (e.target.closest('button')) return;
-    e.preventDefault();
-    const startX = e.clientX - this.root.offsetLeft;
-    const startY = e.clientY - this.root.offsetTop;
-    const parent = this.root.parentElement;
-    const onMove = (ev) => {
-      const maxX = parent.clientWidth - this.root.offsetWidth;
-      const maxY = parent.clientHeight - 40;
-      this.root.style.left = `${Math.min(maxX, Math.max(0, ev.clientX - startX))}px`;
-      this.root.style.top = `${Math.min(maxY, Math.max(0, ev.clientY - startY))}px`;
-      this.root.style.right = 'auto';
-    };
-    const onUp = () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
   }
 
   update() {

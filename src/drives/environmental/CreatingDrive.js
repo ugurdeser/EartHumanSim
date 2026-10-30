@@ -22,7 +22,8 @@ export class CreatingDrive extends Drive {
   }
 
   createAction(person, world) {
-    if (person.inventory.freeWeight < MIN_FREE_WEIGHT) {
+    const hasLoad = person.inventory.entries().some(({ type }) => !type.isTool);
+    if (hasLoad && person.inventory.freeWeight < MIN_FREE_WEIGHT) {
       return ActionFactory.depositAtHome(person, 'Yükünü yuvasına bırakıyor', (t) => !t.isTool);
     }
     const project = ProjectPlanner.choose(person, world);

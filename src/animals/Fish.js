@@ -1,39 +1,71 @@
-import { COLORS } from '../config.js';
+import { ANIMALS, COLORS } from '../config.js';
+import { Season } from '../core/Season.js';
 import { Items } from '../items/Items.js';
-import { Animal } from './Animal.js';
+import { ForageBehavior } from './behavior/ForageBehavior.js';
+import { SwimBehavior } from './behavior/SwimBehavior.js';
+import { Herd } from './Herd.js';
+import { HerdAnimal } from './HerdAnimal.js';
+import { CarcassProduct } from './products/CarcassProduct.js';
 
-const SWIM_SPEED = 0.4;
+const F = ANIMALS.FISH;
 
-/** Balık: göletinin içinde yüzer; oltayla tutulur. */
-export class Fish extends Animal {
-  static SPECIES = Object.freeze({ id: 'fish', name: 'Balık', color: COLORS.FISH, dangerous: false, huntable: false });
+const GENES = Object.freeze([
+  { id: 'size', name: 'Boy' }, // tutulunca verdiği et
+  { id: 'fertility', name: 'Doğurganlık' },
+  { id: 'hardiness', name: 'Dayanıklılık' },
+]);
 
-  constructor(pond, rng) {
-    const angle = rng.angle();
-    const r = Math.sqrt(rng.next()) * pond.radius * 0.8;
-    super(pond.position.x + Math.cos(angle) * r, pond.position.y + Math.sin(angle) * r);
-    this.pond = pond;
-    this.target = null;
-    pond.fish.add(this);
+/** Balık: gölette ya da nehirde sürü halinde yaşar, baharda yumurtlar; oltayla tutulur. */
+export class Fish extends HerdAnimal {
+  static SPECIES = Object.freeze({
+    id: 'fish',
+    name: 'Balık',
+    names: Object.freeze({ male: 'Balık', female: 'Balık', young: 'Yavru balık' }),
+    color: COLORS.FISH,
+    dangerous: false,
+    huntable: false,
+    domesticable: false,
+    genes: GENES,
+    movement: Object.freeze({ walk: F.SWIM_SPEED, run: F.SWIM_SPEED }),
+    life: Object.freeze({ adultAge: F.ADULT_AGE, oldAge: F.OLD_AGE, oldAgeRisk: F.OLD_AGE_RISK, wildAge: F.WILD_AGE }),
+    needs: Object.freeze({
+      foodDuration: F.FOOD_DURATION,
+      waterDuration: Infinity, // suyun içinde
+      starvationTime: F.STARVATION_TIME,
+      freezingTime: F.STARVATION_TIME,
+      healTime: F.HEAL_TIME,
+      comfortTemperature: -Infinity, // buz altında da yaşar
+    }),
+    reproduction: Object.freeze({
+      matingSeasons: [Season.SPRING],
+      conceptionChance: F.CONCEPTION_CHANCE,
+      gestationDays: F.GESTATION_DAYS,
+      lactationDays: 0,
+      litterSize: F.LITTER_SIZE,
+      mateRadius: F.MATE_RADIUS,
+    }),
+    shelterSeasons: Object.freeze([]),
+    maxHerd: 1, // sürü boyunu suyun büyüklüğü belirler (createHerd)
+
+    createProducts: () => [new CarcassProduct(Items.FISH, { amount: (a) => Math.max(1, F.MEAT * a.genome.scale('size', 0.6, 1.4) * (a.isYoung ? 0.4 : 1)) })],
+    createBehaviors: () => [new ForageBehavior({ label: 'Besleniyor', feedTime: F.FEED_TIME }), new SwimBehavior()],
+  });
+
+  /** Bir suyun balık sürüsü: yerinden ayrılmaz, boyu suyun kapasitesi kadardır. */
+  static createHerd(pond) {
+    const herd = new Herd(pond.position, { maxSize: pond.fishCapacity, roams: false });
+    herd.pond = pond;
+    pond.school = herd;
+    return herd;
   }
 
-  get catch() {
-    return { type: Items.FISH, amount: 1 };
+  /** Yaşadığı gölet ya da nehir parçası. */
+  get pond() {
+    return this.herd?.pond;
   }
 
-  update(world, dt) {
-    if (!this.target) {
-      const angle = world.rng.angle();
-      const r = Math.sqrt(world.rng.next()) * this.pond.radius * 0.8;
-      this.target = this.pond.position.clone();
-      this.target.x += Math.cos(angle) * r;
-      this.target.y += Math.sin(angle) * r;
-    }
-    if (this.moveTowards(this.target, SWIM_SPEED, dt, world)) this.target = null;
-  }
-
-  die() {
-    super.die();
-    this.pond.fish.delete(this);
+  /** Su, havanın sertliğini hissettirmez. */
+  feltTemperature(world) {
+    return world.weather.temperature;
   }
 }

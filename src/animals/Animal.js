@@ -20,6 +20,18 @@ export class Animal extends Agent {
     return this.species.huntable;
   }
 
+  get isYoung() {
+    return false;
+  }
+
+  /** Avlanınca/kesilince çıkanlar: [{ type, amount }]. */
+  slaughterYields() {
+    return [];
+  }
+
+  /** Bir insan avlamaya çalıştı (başarılı olsun olmasın). */
+  onHunted(_world) {}
+
   die() {
     this.alive = false;
   }

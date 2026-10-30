@@ -3,7 +3,8 @@ import { Entity } from '../world/Entity.js';
 /** Hareket edebilen varlıkların temel sınıfı. */
 export class Agent extends Entity {
   /** Hedefe doğru ilerler; vardıysa true döner. */
-  moveTowards(target, speed, dt, world) {
+  moveTowards(target, baseSpeed, dt, world) {
+    const speed = baseSpeed * world.weather.moveFactor;
     const dx = target.x - this.position.x;
     const dy = target.y - this.position.y;
     const distance = Math.hypot(dx, dy);

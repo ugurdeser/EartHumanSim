@@ -1,8 +1,10 @@
 import { PLANTS } from '../../config.js';
 import { Random } from '../../core/Random.js';
-import { Bush } from '../Bush.js';
-import { Grass } from '../Grass.js';
-import { Tree } from '../Tree.js';
+import { BERRY_BUSHES } from '../../plants/BerryBushes.js';
+import { Grass } from '../../plants/Grass.js';
+import { Tree } from '../../plants/Tree.js';
+
+const MIXED_BUSH_SHARE = 0.15;
 
 /**
  * Bir parçanın bitkilerini biyom haritasına göre üretir.
@@ -20,15 +22,22 @@ export class ChunkGenerator {
     const area = (chunk.maxX - chunk.minX) * (chunk.maxY - chunk.minY);
     const point = () => ({ x: rng.range(chunk.minX, chunk.maxX), y: rng.range(chunk.minY, chunk.maxY) });
 
-    this.#scatter(rng, area * PLANTS.TREE_ATTEMPTS, point, (x, y) => this.biomes.treeChance(x, y), 3, (x, y) =>
-      chunk.trees.push(new Tree(x, y, { radius: rng.range(2.5, 4.5), fruitful: rng.chance(PLANTS.FRUIT_TREE_RATIO) })),
+    this.#scatter(rng, area * PLANTS.TREE_ATTEMPTS, point, (x, y) => this.biomes.treeChance(x, y), PLANTS.TREE.WATER_MARGIN, (x, y) =>
+      chunk.trees.push(Tree.createWild(x, y, rng, { fruitful: rng.chance(PLANTS.FRUIT_TREE_RATIO) })),
     );
-    this.#scatter(rng, area * PLANTS.BUSH_ATTEMPTS, point, (x, y) => this.biomes.bushChance(x, y), 2, (x, y) =>
-      chunk.bushes.push(new Bush(x, y, { radius: rng.range(1.2, 2.2) })),
+    this.#scatter(rng, area * PLANTS.BUSH_ATTEMPTS, point, (x, y) => this.biomes.bushChance(x, y), PLANTS.BUSH.WATER_MARGIN, (x, y) =>
+      chunk.bushes.push(this.#bushAt(x, y, rng).createWild(x, y, rng)),
     );
-    this.#scatter(rng, area * PLANTS.GRASS_ATTEMPTS, point, (x, y) => this.biomes.grassChance(x, y), 1, (x, y) =>
-      chunk.grass.push(new Grass(x, y, { radius: rng.range(0.8, 1.5) })),
+    this.#scatter(rng, area * PLANTS.GRASS_ATTEMPTS, point, (x, y) => this.biomes.grassChance(x, y), PLANTS.GRASS.WATER_MARGIN, (x, y) =>
+      chunk.grass.push(Grass.createWild(x, y, rng)),
     );
+  }
+
+  /** Çalılar türlerine göre öbekler oluşturur; aralara başka türler de karışır. */
+  #bushAt(x, y, rng) {
+    if (rng.chance(MIXED_BUSH_SHARE)) return rng.pick(BERRY_BUSHES);
+    const variety = this.biomes.bushVariety(x, y);
+    return BERRY_BUSHES[Math.min(BERRY_BUSHES.length - 1, Math.floor(variety * BERRY_BUSHES.length))];
   }
 
   #scatter(rng, attempts, point, chanceAt, waterMargin, create) {

@@ -1,4 +1,4 @@
-import { MINUTE } from '../../config.js';
+import { HOUR, MINUTE } from '../../config.js';
 import { MoveToAction } from '../../actions/MoveToAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
@@ -23,9 +23,9 @@ export class BranchSource extends MaterialSource {
     return new SequenceAction('Dal toplamaya gidiyor', [
       new MoveToAction('Ağaçlığa gidiyor', tree.position, { arriveDistance: tree.radius + 1 }),
       new PerformAction('Dal topluyor', 20 * MINUTE / person.workSpeed('gathering', 'agility'), {
-        onComplete: (p) => {
+        onComplete: (p, w) => {
           p.inventory.add(Items.BRANCH, 2 + Math.round(p.skills.get('gathering') * 2));
-          p.improveSkill('gathering', 0.005);
+          p.improveSkill('gathering', (20 * MINUTE) / HOUR, w);
         },
       }),
     ]);

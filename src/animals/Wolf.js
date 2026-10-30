@@ -1,104 +1,91 @@
 import { ANIMALS, COLORS } from '../config.js';
-import { Combat } from '../agents/Combat.js';
-import { Animal } from './Animal.js';
+import { Sex } from '../agents/Sex.js';
+import { Season } from '../core/Season.js';
+import { Items } from '../items/Items.js';
+import { DrinkBehavior } from './behavior/DrinkBehavior.js';
+import { ForageBehavior } from './behavior/ForageBehavior.js';
+import { HuntBehavior } from './behavior/HuntBehavior.js';
+import { IdleBehavior } from './behavior/IdleBehavior.js';
+import { HerdAnimal } from './HerdAnimal.js';
+import { CarcassProduct } from './products/CarcassProduct.js';
 
-const State = Object.freeze({ ROAM: 'roam', CHASE: 'chase', REST: 'rest' });
-const SCAN_INTERVAL = 10;
-const ROAM_RADIUS = 400;
 const W = ANIMALS.WOLF;
+const PACK_RANGE = 120;
 
-/** Kurt: koyun avlar, yalnız kalan insanlara saldırır, kalabalıktan çekinir. */
-export class Wolf extends Animal {
-  static SPECIES = Object.freeze({ id: 'wolf', name: 'Kurt', color: COLORS.WOLF, dangerous: true, huntable: false });
+const GENES = Object.freeze([
+  { id: 'size', name: 'Boy' },
+  { id: 'speed', name: 'Hız' },
+  { id: 'ferocity', name: 'Saldırganlık', mean: 0.4 }, // insana saldırma isteği, ısırık gücü
+  { id: 'fertility', name: 'Doğurganlık' },
+  { id: 'hardiness', name: 'Dayanıklılık' },
+]);
 
-  constructor(x, y) {
-    super(x, y);
-    this.state = State.ROAM;
-    this.target = null;
-    this.prey = null;
-    this.timer = 0;
-    this.scanTimer = 0;
+/**
+ * Kurt: sürü halinde yaşar, koyun avlar, yalnız kalan insana saldırır, kalabalıktan çekinir.
+ * Vahşidir: evcilleştirilemez, sağılamaz, kırkılamaz; öldürülürse et ve post verir.
+ */
+export class Wolf extends HerdAnimal {
+  static SPECIES = Object.freeze({
+    id: 'wolf',
+    name: 'Kurt',
+    names: Object.freeze({ male: 'Kurt', female: 'Dişi kurt', young: 'Kurt yavrusu' }),
+    color: COLORS.WOLF,
+    dangerous: true,
+    huntable: false,
+    domesticable: false,
+    genes: GENES,
+    movement: Object.freeze({ walk: W.ROAM_SPEED, run: W.CHASE_SPEED }),
+    life: Object.freeze({ adultAge: W.ADULT_AGE, oldAge: W.OLD_AGE, oldAgeRisk: W.OLD_AGE_RISK, wildAge: W.WILD_AGE }),
+    needs: Object.freeze({
+      foodDuration: W.FOOD_DURATION,
+      waterDuration: W.WATER_DURATION,
+      starvationTime: W.STARVATION_TIME,
+      freezingTime: W.FREEZING_TIME,
+      healTime: W.HEAL_TIME,
+      comfortTemperature: W.COMFORT_TEMPERATURE,
+    }),
+    reproduction: Object.freeze({
+      matingSeasons: [Season.WINTER],
+      conceptionChance: W.CONCEPTION_CHANCE,
+      gestationDays: W.GESTATION_DAYS,
+      lactationDays: W.LACTATION_DAYS,
+      litterSize: W.LITTER_SIZE,
+      mateRadius: PACK_RANGE * 2,
+    }),
+    shelterSeasons: Object.freeze([]),
+    maxHerd: W.MAX_PACK,
+
+    createProducts: () => [
+      new CarcassProduct(Items.MEAT, { amount: (a) => W.MEAT * a.genome.scale('size', 0.6, 1.4) * (a.isYoung ? 0.4 : 1) }),
+      new CarcassProduct(Items.HIDE, { amount: () => W.HIDE }),
+    ],
+
+    createBehaviors: () => [
+      new HuntBehavior({ detectRadius: W.DETECT_RADIUS, chaseTime: W.CHASE_TIME, threshold: W.HUNT_BELOW, cooldown: W.COOLDOWN, deterrence: W.GROUP_DETERRENCE }),
+      new DrinkBehavior(),
+      new ForageBehavior({ label: 'Küçük av arıyor', feedTime: W.SMALL_GAME_TIME, threshold: W.HUNT_BELOW * 0.6, radius: PACK_RANGE }),
+      new IdleBehavior({ radius: PACK_RANGE }),
+    ],
+  });
+
+  /** Yeni sürü: üreyebilmesi için en az bir erkek ve bir dişi içerir. */
+  static createPack(world, center, count) {
+    const pack = Wolf.createHerd(center);
+    for (let i = 0; i < count; i++) {
+      const p = world.randomPointNear(center, 20);
+      const wolf = Wolf.createWild(p.x, p.y, world.rng);
+      if (i < 2) wolf.sex = i === 0 ? Sex.MALE : Sex.FEMALE;
+      pack.add(wolf);
+      world.addAnimal(wolf);
+    }
+    return pack;
+  }
+
+  get runSpeed() {
+    return super.runSpeed * this.genome.scale('speed', 0.85, 1.15);
   }
 
   get isChasing() {
-    return this.state === State.CHASE;
-  }
-
-  update(world, dt) {
-    switch (this.state) {
-      case State.ROAM:
-        return this.#roam(world, dt);
-      case State.CHASE:
-        return this.#chase(world, dt);
-      case State.REST:
-        return this.#rest(world, dt);
-    }
-  }
-
-  #roam(world, dt) {
-    if (!this.target) this.target = world.randomPointNear(this.position, ROAM_RADIUS);
-    if (this.moveTowards(this.target, W.ROAM_SPEED, dt, world)) this.target = null;
-
-    this.scanTimer -= dt;
-    if (this.scanTimer > 0) return;
-    this.scanTimer = SCAN_INTERVAL;
-    this.prey = this.#findPrey(world);
-    if (!this.prey) return;
-    this.timer = 0;
-    this.state = State.CHASE;
-  }
-
-  /** Önce koyun; yoksa savunmasız insan. */
-  #findPrey(world) {
-    const sheep = world.nearestAnimal(this.position, W.DETECT_RADIUS, (a) => a.isHuntable);
-    if (sheep) return sheep.animal;
-    let best = null;
-    let bestDistance = W.DETECT_RADIUS;
-    for (const person of world.people) {
-      const distance = person.position.distanceTo(this.position);
-      if (distance < bestDistance && this.#isVulnerable(person, world)) {
-        best = person;
-        bestDistance = distance;
-      }
-    }
-    return best;
-  }
-
-  #isVulnerable(person, world) {
-    return world.peopleNear(person.position, 25, person).length < W.GROUP_DETERRENCE;
-  }
-
-  #chase(world, dt) {
-    const prey = this.prey;
-    this.timer += dt;
-    const isPerson = !(prey instanceof Animal);
-    if (!prey.alive || this.timer > W.CHASE_TIME || (isPerson && !this.#isVulnerable(prey, world))) return this.#giveUp();
-
-    this.moveTowards(prey.position, W.CHASE_SPEED, dt, world);
-    if (this.position.distanceTo(prey.position) > 2) return;
-
-    if (isPerson) Combat.wolfAttacksPerson(this, prey, world);
-    else prey.die();
-    if (this.alive) this.#restAfterHunt(world);
-  }
-
-  #restAfterHunt(world) {
-    this.prey = null;
-    this.timer = W.COOLDOWN;
-    this.target = world.randomPointNear(this.position, ROAM_RADIUS);
-    this.state = State.REST;
-  }
-
-  #giveUp() {
-    this.prey = null;
-    this.target = null;
-    this.state = State.ROAM;
-    this.scanTimer = SCAN_INTERVAL * 3;
-  }
-
-  #rest(world, dt) {
-    this.timer -= dt;
-    if (this.target && this.moveTowards(this.target, W.ROAM_SPEED, dt, world)) this.target = null;
-    if (this.timer <= 0) this.state = State.ROAM;
+    return Boolean(this.brain.current?.isChasing);
   }
 }

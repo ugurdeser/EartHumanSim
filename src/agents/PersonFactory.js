@@ -1,5 +1,5 @@
 import { NAMES, POPULATION, SURNAMES } from '../config.js';
-import { BASIC_TECHNOLOGIES } from '../tech/Technologies.js';
+import { BASIC_TECHNOLOGIES, Technologies } from '../tech/Technologies.js';
 import { Needs } from './Needs.js';
 import { Person } from './Person.js';
 import { Personality } from './Personality.js';
@@ -53,6 +53,7 @@ export class PersonFactory {
       }),
     });
     if (this.rng.chance(POPULATION.STARTING_TECH_CHANCE)) person.knowledge.learn(this.rng.pick(BASIC_TECHNOLOGIES));
+    if (this.rng.chance(POPULATION.FIRE_KNOWLEDGE_CHANCE)) person.knowledge.learn(Technologies.FIRE_MAKING);
     return person;
   }
 

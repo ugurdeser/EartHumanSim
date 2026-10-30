@@ -22,11 +22,25 @@ export class JusticeDrive extends Drive {
   createAction(person) {
     const grievance = person.grievances[0];
     const { thief } = grievance;
+    const leader = person.group?.leader;
+    if (leader && leader !== person && leader !== thief && thief.group === person.group) return this.#complain(person, leader, grievance);
     return new SequenceAction(`${Turkish.ablative(thief.name)} hesap soracak`, [
       ActionFactory.goToPerson(`${Turkish.accusative(thief.name)} buluyor`, thief, 3),
       new CallbackAction(`${Turkish.ablative(thief.name)} hesap soruyor`, (p, w) => {
         if (!thief.alive) return false;
         w.social.punish(p, grievance);
+        return true;
+      }),
+    ]);
+  }
+
+  /** Toplulukta hesabı lider sorar: şikâyetçi önce ona gider. */
+  #complain(person, leader, grievance) {
+    return new SequenceAction(`${Turkish.dative(leader.name)} şikâyete gidiyor`, [
+      ActionFactory.goToPerson(`${Turkish.dative(leader.name)} gidiyor`, leader, 3),
+      new CallbackAction('Şikâyet ediyor', (p, w) => {
+        if (!leader.alive) return false;
+        w.social.conflicts.complain(p, leader, grievance);
         return true;
       }),
     ]);

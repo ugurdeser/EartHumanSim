@@ -2,6 +2,7 @@ import { HOUR, POPULATION, SIM } from '../config.js';
 import { PersonFactory } from '../agents/PersonFactory.js';
 import { Sex } from '../agents/Sex.js';
 import { AnimalSpawner } from '../animals/AnimalSpawner.js';
+import { PlantSystem } from '../plants/PlantSystem.js';
 import { FeatureGenerator } from '../world/FeatureGenerator.js';
 import { Home } from '../world/Home.js';
 import { World } from '../world/World.js';
@@ -24,6 +25,7 @@ export class WorldBuilder {
     const start = new Vector2(world.size / 2, world.size / 2);
     new FeatureGenerator(rng).generate(world, start);
     world.addSystem(new AnimalSpawner(world));
+    world.addSystem(new PlantSystem(world));
     WorldBuilder.#populate(world, start);
     world.activeRegion.refresh(world.people);
 

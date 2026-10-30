@@ -1,13 +1,15 @@
 import { ALL_RECIPES } from '../../tech/Recipes.js';
 import { CraftToolProject } from './CraftToolProject.js';
 import { ExperimentProject } from './ExperimentProject.js';
+import { HelpBuildProject } from './HelpBuildProject.js';
 import { RoadProject } from './RoadProject.js';
 import { ShelterProject } from './ShelterProject.js';
 
 /** Yaratmak güdüsü için projeler; yeni proje türü eklemek için listeye eklemek yeterli. */
 const PROJECTS = Object.freeze([
-  ...ALL_RECIPES.map((recipe) => new CraftToolProject(recipe)),
+  ...ALL_RECIPES.filter((recipe) => recipe.output.isTool).map((recipe) => new CraftToolProject(recipe)),
   new ShelterProject(),
+  new HelpBuildProject(),
   new RoadProject(),
   new ExperimentProject(),
 ]);

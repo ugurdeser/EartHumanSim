@@ -3,12 +3,14 @@ import { ChunkLayer } from './ChunkLayer.js';
 import { FeatureLayer } from './FeatureLayer.js';
 import { OverviewLayer } from './OverviewLayer.js';
 import { PlantLayer } from './PlantLayer.js';
+import { SnowLayer } from './SnowLayer.js';
+import { WeatherEffects } from './WeatherEffects.js';
 
 const NIGHT_MAX_ALPHA = 0.45;
 
 /**
  * Katmanları sırayla çizer: uzak görünüm → parça resimleri → tek tek bitkiler →
- * göl/maden/yuva/yol → canlılar → gece. Her katman kendi zoom aralığını bilir.
+ * kar → göl/maden/yuva/yol → canlılar → hava → gece. Her katman kendi zoom aralığını bilir.
  */
 export class Renderer {
   constructor(canvas, world, camera, selection) {
@@ -20,9 +22,11 @@ export class Renderer {
       new OverviewLayer(world),
       new ChunkLayer(world),
       new PlantLayer(world),
+      new SnowLayer(world),
       new FeatureLayer(world),
       new AgentLayer(world, selection),
     ];
+    this.weatherEffects = new WeatherEffects(world);
     this.dpr = 1;
     this.resize();
   }
@@ -44,6 +48,8 @@ export class Renderer {
     camera.applyTo(ctx, dpr);
     for (const layer of this.layers) layer.draw(ctx, camera);
 
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.weatherEffects.draw(ctx, camera.width, camera.height);
     this.#drawNight();
   }
 

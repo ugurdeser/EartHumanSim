@@ -17,6 +17,16 @@ export class RelationshipBook {
     return relation;
   }
 
+  /** Var olan ilişki; tanışmamışsa null (yeni ilişki oluşturmaz). */
+  peek(other) {
+    return this.relations.get(other.id) ?? null;
+  }
+
+  /** [kişi kimliği, ilişki] çiftleri. */
+  entries() {
+    return this.relations.entries();
+  }
+
   set(other, relation) {
     this.relations.set(other.id, relation);
   }

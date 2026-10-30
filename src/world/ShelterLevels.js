@@ -22,7 +22,7 @@ export const SHELTER_LEVELS = Object.freeze([
     name: 'Ahşap kulübe',
     materials: [[Items.WOOD, 12]],
     technology: Technologies.WOODEN_HUT,
-    minSkill: 0.35,
+    minSkill: 0,
     work: 4,
     restQuality: 1.4,
     insulation: 8,
@@ -32,7 +32,7 @@ export const SHELTER_LEVELS = Object.freeze([
     name: 'Taş ev',
     materials: [[Items.STONE, 30]],
     technology: Technologies.STONE_HOUSE,
-    minSkill: 0.6,
+    minSkill: 0.05, // ≈ 25 saat inşaat: en az bir kulübe yapmış olmalı
     work: 10,
     restQuality: 1.6,
     insulation: 12,

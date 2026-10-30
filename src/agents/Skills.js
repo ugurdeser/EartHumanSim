@@ -1,4 +1,4 @@
-import { clamp01 } from '../core/MathUtils.js';
+import { SKILLS } from '../config.js';
 
 export const SKILL_DEFINITIONS = Object.freeze([
   { id: 'gathering', name: 'Toplayıcılık' },
@@ -8,31 +8,48 @@ export const SKILL_DEFINITIONS = Object.freeze([
   { id: 'woodcutting', name: 'Odunculuk' },
   { id: 'fishing', name: 'Balıkçılık' },
   { id: 'hunting', name: 'Avcılık' },
+  { id: 'husbandry', name: 'Hayvancılık' }, // süt sağma, yün kırkma
+  { id: 'leadership', name: 'Liderlik' },
 ]);
 
-/** Pratikle gelişen beceriler; gelişme hızı zekâyla artar. */
+/**
+ * Pratikle gelişen beceriler. Her beceri biriken çalışma saatinden hesaplanır:
+ * başta hızlı, sonra yavaş ilerler; ustalık 10.000 saat ister. Herkes sıfırdan başlar.
+ */
 export class Skills {
-  constructor(rng) {
-    this.levels = new Map(SKILL_DEFINITIONS.map(({ id }) => [id, rng ? rng.range(0.05, 0.3) : 0]));
+  constructor() {
+    this.hours = new Map(SKILL_DEFINITIONS.map(({ id }) => [id, 0]));
   }
 
+  /** Beceri düzeyi (0..1). */
   get(id) {
-    return this.levels.get(id) ?? 0;
+    return Math.min(1, Math.sqrt(this.hoursOf(id) / SKILLS.MASTERY_HOURS));
   }
 
-  improve(id, amount, intelligence = 0.5) {
-    const learningRate = 0.5 + intelligence;
-    const diminishing = 1 - this.get(id) * 0.6;
-    this.levels.set(id, clamp01(this.get(id) + amount * learningRate * diminishing));
+  hoursOf(id) {
+    return this.hours.get(id) ?? 0;
+  }
+
+  practice(id, hours) {
+    this.hours.set(id, this.hoursOf(id) + hours);
+  }
+
+  /** En çok çalıştığı beceri. */
+  get best() {
+    return SKILL_DEFINITIONS.reduce((best, { id }) => (this.hoursOf(id) > this.hoursOf(best) ? id : best), SKILL_DEFINITIONS[0].id);
   }
 
   get average() {
-    let total = 0;
-    for (const level of this.levels.values()) total += level;
-    return total / this.levels.size;
+    return SKILL_DEFINITIONS.reduce((sum, { id }) => sum + this.get(id), 0) / SKILL_DEFINITIONS.length;
   }
 
   entries() {
-    return SKILL_DEFINITIONS.map((def) => ({ ...def, value: this.get(def.id) }));
+    return SKILL_DEFINITIONS.map((def) => ({ ...def, value: this.get(def.id), hours: this.hoursOf(def.id) }));
+  }
+
+  /** Düzeyin adı: çırak, kalfa, usta. */
+  static rankOf(level) {
+    if (level >= SKILLS.MASTER_LEVEL) return 'Usta';
+    return level >= SKILLS.JOURNEYMAN_LEVEL ? 'Kalfa' : 'Çırak';
   }
 }

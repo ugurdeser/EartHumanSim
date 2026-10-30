@@ -1,3 +1,5 @@
+import { CLOTHING } from '../config.js';
+
 /** Yıpranabilen tek bir alet. */
 class ToolInstance {
   constructor(type) {
@@ -23,14 +25,21 @@ export class Inventory {
 
   // ---------- Sorgular ----------
 
+  /** Taşınan ağırlık: giyilenler yük sayılmaz. */
   get weight() {
-    let total = this.tools.reduce((sum, t) => sum + t.type.weight, 0);
+    const worn = this.worn;
+    let total = this.tools.reduce((sum, t) => (worn.includes(t) ? sum : sum + t.type.weight), 0);
     for (const [type, count] of this.stacks) total += type.weight * count;
     return total;
   }
 
+  /** Sırt çantasıyla birlikte taşıma sınırı. */
+  get carryLimit() {
+    return this.capacity + this.worn.reduce((sum, t) => sum + (t.type.carryBonus ?? 0), 0);
+  }
+
   get freeWeight() {
-    return Math.max(0, this.capacity - this.weight);
+    return Math.max(0, this.carryLimit - this.weight);
   }
 
   count(type) {
@@ -62,6 +71,19 @@ export class Inventory {
   entries() {
     const list = [...this.stacks].map(([type, count]) => ({ type, count }));
     for (const tool of this.tools) list.push({ type: tool.type, count: 1, condition: tool.condition });
+    return list;
+  }
+
+  /** Üzerinde giyili olanlar. */
+  get wornEntries() {
+    return this.worn.map((t) => ({ type: t.type, count: 1, condition: t.condition }));
+  }
+
+  /** Giyilmeyip taşınanlar (yedek giysiler dahil). */
+  get carriedEntries() {
+    const worn = this.worn;
+    const list = [...this.stacks].map(([type, count]) => ({ type, count }));
+    for (const tool of this.tools) if (!worn.includes(tool)) list.push({ type: tool.type, count: 1, condition: tool.condition });
     return list;
   }
 
@@ -115,6 +137,49 @@ export class Inventory {
   }
 
   // ---------- Aletler ----------
+
+  /** Eskidikçe koruma azalır. */
+  static #warmth(tool) {
+    return tool.type.insulation * (CLOTHING.WORN_WARMTH + (1 - CLOTHING.WORN_WARMTH) * tool.condition);
+  }
+
+  /** Her yerde en iyi olan giyilir (sırtta en büyük çanta); fazlası yedektir. */
+  get worn() {
+    const value = (t) => t.type.carryBonus ?? Inventory.#warmth(t);
+    const best = new Map();
+    for (const tool of this.tools) {
+      const { slot } = tool.type;
+      if (!slot) continue;
+      const current = best.get(slot);
+      if (!current || value(tool) > value(current)) best.set(slot, tool);
+    }
+    return [...best.values()];
+  }
+
+  /** Giyilenlerin toplam koruması (°C). */
+  get bestInsulation() {
+    return this.worn.reduce((sum, t) => sum + Inventory.#warmth(t), 0);
+  }
+
+  /** Giyilenler `days` gün yıpranır; eskiyip parçalananların türlerini döndürür. */
+  wearClothes(days) {
+    const torn = [];
+    for (const tool of this.worn) {
+      tool.durability -= days;
+      if (tool.durability > 0) continue;
+      this.tools.splice(this.tools.indexOf(tool), 1);
+      torn.push(tool.type);
+    }
+    return torn;
+  }
+
+  /** Bu eşya elindekilerden daha iyi mi? Eskimiş giysi yenisi yapılmadan önce parçalanana kadar kullanılır. */
+  isUpgrade(type) {
+    const rival = (t) => t.type.slot === type.slot;
+    if (type.carryBonus) return !this.tools.some((t) => rival(t) && t.type.carryBonus >= type.carryBonus);
+    if (type.slot) return !this.tools.some((t) => rival(t) && t.type.insulation >= type.insulation);
+    return !this.has(type);
+  }
 
   toolFor(capability) {
     return this.tools.find((t) => t.type.can(capability)) ?? null;

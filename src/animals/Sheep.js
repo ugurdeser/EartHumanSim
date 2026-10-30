@@ -1,66 +1,81 @@
-import { ANIMALS, COLORS } from '../config.js';
+import { ANIMALS, AGING, COLORS } from '../config.js';
+import { Season } from '../core/Season.js';
 import { Items } from '../items/Items.js';
-import { Animal } from './Animal.js';
+import { DrinkBehavior } from './behavior/DrinkBehavior.js';
+import { FleeBehavior } from './behavior/FleeBehavior.js';
+import { GrazeBehavior } from './behavior/GrazeBehavior.js';
+import { IdleBehavior } from './behavior/IdleBehavior.js';
+import { HerdAnimal } from './HerdAnimal.js';
+import { CarcassProduct } from './products/CarcassProduct.js';
+import { GrowingProduct } from './products/GrowingProduct.js';
+import { WoolCoat } from './products/WoolCoat.js';
 
-const GRAZE_RADIUS = 25;
-const THREAT_CHECK_INTERVAL = 4;
 const S = ANIMALS.SHEEP;
+const GRAZE_RADIUS = 25;
 
-/** Koyun: sürüyle otlar, insan ya da kurt yaklaşınca kaçar. Avlanınca et verir. */
-export class Sheep extends Animal {
-  static SPECIES = Object.freeze({ id: 'sheep', name: 'Koyun', color: COLORS.SHEEP, dangerous: false, huntable: true });
+/** Kalıtsal özellikler: yavrular anne-babadan alır. */
+const GENES = Object.freeze([
+  { id: 'size', name: 'Boy' }, // et miktarı
+  { id: 'woolGrowth', name: 'Yün verimi' },
+  { id: 'milkYield', name: 'Süt verimi' },
+  { id: 'fertility', name: 'Doğurganlık' },
+  { id: 'hardiness', name: 'Dayanıklılık' }, // açlık ve soğuğa karşı
+  { id: 'tameness', name: 'Uysallık', mean: 0.35 }, // insandan ne kadar ürktüğü
+]);
 
-  constructor(x, y) {
-    super(x, y);
-    this.herd = null;
-    this.target = null;
-    this.pause = 0;
-    this.threat = null;
-    this.threatTimer = 0;
-  }
+/** Koyun: otlar, su içer, kışın yamaca sığınır; et, süt, yün ve post verir. */
+export class Sheep extends HerdAnimal {
+  static SPECIES = Object.freeze({
+    id: 'sheep',
+    name: 'Koyun',
+    names: Object.freeze({ male: 'Koç', female: 'Koyun', young: 'Kuzu' }),
+    color: COLORS.SHEEP,
+    dangerous: false,
+    huntable: true,
+    domesticable: true,
+    genes: GENES,
+    movement: Object.freeze({ walk: S.WALK_SPEED, run: S.FLEE_SPEED }),
+    life: Object.freeze({ adultAge: S.ADULT_AGE, oldAge: S.OLD_AGE, oldAgeRisk: S.OLD_AGE_RISK, wildAge: S.WILD_AGE }),
+    needs: Object.freeze({
+      foodDuration: S.FOOD_DURATION,
+      waterDuration: S.WATER_DURATION,
+      starvationTime: S.STARVATION_TIME,
+      freezingTime: S.FREEZING_TIME,
+      healTime: S.HEAL_TIME,
+      comfortTemperature: S.COMFORT_TEMPERATURE,
+    }),
+    reproduction: Object.freeze({
+      matingSeasons: [Season.AUTUMN],
+      conceptionChance: S.CONCEPTION_CHANCE,
+      gestationDays: S.GESTATION_DAYS,
+      lactationDays: S.LACTATION_DAYS,
+      litterSize: S.LITTER_SIZE,
+      mateRadius: GRAZE_RADIUS * 4,
+    }),
+    shelterSeasons: Object.freeze([Season.WINTER]),
+    maxHerd: S.MAX_HERD,
 
-  get meat() {
-    return { type: Items.MEAT, amount: S.MEAT };
-  }
+    createProducts: () => [
+      new WoolCoat(Items.WOOL, {
+        perDay: (a) => S.WOOL_PER_YEAR * AGING.YEARS_PER_DAY * a.genome.scale('woolGrowth', 0.5, 1.5),
+        max: (a) => S.WOOL_PER_YEAR * a.genome.scale('woolGrowth', 0.5, 1.5),
+        maxInsulation: S.WOOL_INSULATION,
+      }),
+      new GrowingProduct(Items.MILK, {
+        perDay: (a) => S.MILK_PER_DAY * a.genome.scale('milkYield', 0.5, 1.5),
+        max: (a) => 2 * S.MILK_PER_DAY * a.genome.scale('milkYield', 0.5, 1.5),
+        isProducing: (a, world) => a.reproduction.isLactating(world.now),
+        dropsWhenIdle: true,
+      }),
+      new CarcassProduct(Items.MEAT, { amount: (a) => S.MEAT * a.genome.scale('size', 0.6, 1.4) * (a.isYoung ? 0.4 : 1) }),
+      new CarcassProduct(Items.HIDE, { amount: () => S.HIDE }),
+    ],
 
-  update(world, dt) {
-    if (this.herd?.leader === this) this.herd.update(world, dt);
-    this.threatTimer -= dt;
-    if (this.threatTimer <= 0) {
-      this.threatTimer = THREAT_CHECK_INTERVAL;
-      this.threat = this.#nearestThreat(world);
-    }
-    if (this.threat) return this.#flee(this.threat, world, dt);
-    this.#graze(world, dt);
-  }
-
-  #nearestThreat(world) {
-    const person = world.peopleNear(this.position, S.FLEE_RADIUS)[0];
-    if (person) return person.position.clone();
-    return world.nearestDanger(this.position, S.FLEE_RADIUS * 1.5)?.animal.position.clone() ?? null;
-  }
-
-  #flee(from, world, dt) {
-    const away = this.position.clone().sub(from).normalize().scale(30).add(this.position);
-    this.moveTowards(away, S.FLEE_SPEED, dt, world);
-    this.target = null;
-  }
-
-  #graze(world, dt) {
-    if (this.pause > 0) {
-      this.pause -= dt;
-      return;
-    }
-    const center = this.herd?.center ?? this.position;
-    if (!this.target) this.target = world.randomPointNear(center, GRAZE_RADIUS);
-    if (this.moveTowards(this.target, S.WALK_SPEED, dt, world)) {
-      this.target = null;
-      this.pause = world.rng.range(60, 400);
-    }
-  }
-
-  die() {
-    super.die();
-    this.herd?.members.delete(this);
-  }
+    createBehaviors: () => [
+      new FleeBehavior({ radius: S.FLEE_RADIUS }),
+      new DrinkBehavior(),
+      new GrazeBehavior({ radius: GRAZE_RADIUS, grazeTime: S.GRAZE_TIME }),
+      new IdleBehavior({ radius: GRAZE_RADIUS }),
+    ],
+  });
 }

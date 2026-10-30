@@ -22,7 +22,7 @@ export class Knowledge {
 
   /** Önkoşulları bilinen ama kendisi bilinmeyen teknolojiler. */
   get researchable() {
-    return ALL_TECHNOLOGIES.filter((t) => !this.knows(t) && t.prerequisites.every((id) => this.known.has(id)));
+    return ALL_TECHNOLOGIES.filter((t) => !t.locked && !this.knows(t) && t.prerequisites.every((id) => this.known.has(id)));
   }
 
   /** Bu kişinin bilip `other`ın bilmediği ve öğrenebileceği teknolojiler. */

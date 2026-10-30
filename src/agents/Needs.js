@@ -1,14 +1,15 @@
-import { NEEDS } from '../config.js';
+import { NEEDS, WEATHER } from '../config.js';
 import { clamp01 } from '../core/MathUtils.js';
 
 /** Bedensel ihtiyaçlar (hepsi 0..1, 1 = tamamen karşılanmış). */
 export class Needs {
-  constructor({ food = 1, water = 1, energy = 1, warmth = 1, health = 1 } = {}) {
+  constructor({ food = 1, water = 1, energy = 1, warmth = 1, health = 1, wetness = 0 } = {}) {
     this.food = food;
     this.water = water;
     this.energy = energy;
     this.warmth = warmth;
     this.health = health;
+    this.wetness = wetness; // 0 = kuru, 1 = sırılsıklam (iyilik değil, durum)
   }
 
   /**
@@ -45,6 +46,13 @@ export class Needs {
     } else {
       this.warmth = clamp01(this.warmth + dt / NEEDS.WARMTH_GAIN_TIME);
     }
+  }
+
+  /** Açıkta yağışta ıslanır, kuruyken ya da ateş başında kurur. */
+  updateWetness(dt, { precipitation, drying }) {
+    const gain = (dt * precipitation) / WEATHER.WET_TIME;
+    const loss = (dt * drying) / WEATHER.DRY_TIME;
+    this.wetness = clamp01(this.wetness + gain - loss);
   }
 
   eat(amount) {

@@ -23,6 +23,22 @@ export class SocialQueries {
     return best;
   }
 
+  /** Evli kişinin, eşinden daha çok çekildiği yakındaki biri. */
+  static lover(person, world, minAttraction, maxDistance = 1000) {
+    const spouse = person.relationTo(person.partner).attraction;
+    let best = null;
+    let bestAttraction = Math.max(minAttraction, spouse);
+    for (const other of world.people) {
+      if (other === person.partner || !world.social.canPair(person, other)) continue;
+      const attraction = person.relations.peek(other)?.attraction ?? 0;
+      if (attraction > bestAttraction && person.position.distanceTo(other.position) <= maxDistance) {
+        best = other;
+        bestAttraction = attraction;
+      }
+    }
+    return best;
+  }
+
   /** En çok yakınlık duyulan kişi (çocuklar için doğal olarak anne/baba). */
   static closestCompanion(person, world, maxDistance = 2000) {
     let best = null;
