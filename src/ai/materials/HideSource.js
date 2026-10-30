@@ -1,8 +1,9 @@
 import { Items } from '../../items/Items.js';
 import { HuntingProvider } from '../food/HuntingProvider.js';
+import { SlaughterProvider } from '../food/SlaughterProvider.js';
 import { MaterialSource } from './MaterialSource.js';
 
-/** Post yalnızca avdan çıkar: posta ihtiyaç duyan avlanmaya gider (eti de yanına kâr). */
+/** Post avdan ya da ağıldaki fazla hayvandan çıkar: önce ağıla bakılır (eti de yanına kâr). */
 export class HideSource extends MaterialSource {
   constructor() {
     super(Items.HIDE);
@@ -14,10 +15,12 @@ export class HideSource extends MaterialSource {
   }
 
   canGather(person, world) {
-    return Boolean(HideSource.#findPreyWithHide(person, world));
+    return Boolean(SlaughterProvider.findSurplus(person, world) || HideSource.#findPreyWithHide(person, world));
   }
 
   createAction(person, world) {
+    const surplus = SlaughterProvider.findSurplus(person, world);
+    if (surplus) return SlaughterProvider.slaughterAction(person, surplus);
     const found = HideSource.#findPreyWithHide(person, world);
     return found ? HuntingProvider.huntAction(found.animal) : null;
   }

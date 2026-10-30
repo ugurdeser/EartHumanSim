@@ -4,11 +4,14 @@ import { MoveToAction } from '../actions/MoveToAction.js';
 import { PerformAction } from '../actions/PerformAction.js';
 import { SequenceAction } from '../actions/SequenceAction.js';
 import { WanderAction } from '../actions/WanderAction.js';
+import { Inventory } from '../items/Inventory.js';
 import { FUEL_TYPES, Items } from '../items/Items.js';
 import { Technologies } from '../tech/Technologies.js';
 import { MaterialSources } from './materials/MaterialSources.js';
 
 const HOME_FETCH_RANGE = 2000;
+const COMMUNAL_FUEL_PIECES = 3; // bir günlük odun
+const UNLOAD_AT_HOME_RANGE = 500;
 
 /** Birden çok güdünün ortak kullandığı eylem kalıpları. */
 export class ActionFactory {
@@ -72,7 +75,8 @@ export class ActionFactory {
         for (const inventory of [p.inventory, p.home.storage]) inventory.remove(type, fire.feed(type, inventory.count(type)));
       }
     });
-    if (person.home.fire.isLit || !ActionFactory.canKindle(person)) return feed;
+    const hasFuel = person.inventory.fuelSeconds > 0 || person.home.storage.fuelSeconds > 0;
+    if (person.home.fire.isLit || !hasFuel || !ActionFactory.canKindle(person)) return feed;
     return new SequenceAction('Ocağı yakıyor', [
       new PerformAction('Ateş yakıyor', FIRE.LIGHT_TIME / person.workSpeed('crafting', 'agility')),
       feed,
@@ -82,6 +86,23 @@ export class ActionFactory {
   /** Ocak zaten yanıyorsa ya da kişi ateş yakmayı biliyorsa ateşe yakıt atılabilir. */
   static canKindle(person) {
     return person.home.fire.isLit || person.knowledge.knows(Technologies.FIRE_MAKING);
+  }
+
+  /** Sırtı doluysa yiyeceğe yer açar: ev yakınsa yükünü depoya koyar, uzaksa yere bırakır. */
+  static makeRoom(person) {
+    const isLoad = (t) => !t.isFood && t !== Items.WATER;
+    if (ActionFactory.isNearHome(person, UNLOAD_AT_HOME_RANGE)) return ActionFactory.depositAtHome(person, 'Yükünü eve bırakıyor', isLoad);
+    return new CallbackAction('Yükünü yere bırakıyor', (p) => p.inventory.transferTo(new Inventory(), isLoad) > 0);
+  }
+
+  /** Topluluğun bölüşülmeyi bekleyen payından köy merkezine gidip yakıt alır (yoksa null). */
+  static fetchCommunalFuel(person) {
+    const group = person.group;
+    if (!group || group.pot.fuelSeconds === 0) return null;
+    return new SequenceAction('Ortak paydan yakacak alıyor', [
+      new MoveToAction('Köy merkezine gidiyor', group.center.clone(), { arriveDistance: 3 }),
+      new CallbackAction('Yakacak alıyor', (p) => group.pot.transferTo(p.inventory, (t) => t.isFuel, COMMUNAL_FUEL_PIECES) > 0),
+    ]);
   }
 
   /** Yakıt bul: baltası varsa odun, yoksa dal. */

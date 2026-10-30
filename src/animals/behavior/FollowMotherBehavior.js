@@ -10,13 +10,17 @@ export class FollowMotherBehavior extends AnimalBehavior {
   }
 
   urgency(animal) {
-    if (!animal.isYoung || !animal.mother?.alive) return 0;
+    if (!animal.isYoung || !animal.followsMother) return 0;
     return animal.position.distanceTo(animal.mother.position) > FOLLOW_RANGE ? 0.9 : 0;
+  }
+
+  quietFor(animal) {
+    return this.urgency(animal) > 0 ? 0 : Infinity;
   }
 
   tick(animal, world, dt) {
     const { mother } = animal;
-    if (!mother?.alive) return true;
+    if (!animal.followsMother) return true;
     animal.moveTowards(mother.position, animal.runSpeed, dt, world);
     return animal.position.distanceTo(mother.position) <= CLOSE_ENOUGH;
   }

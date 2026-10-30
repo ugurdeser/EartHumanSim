@@ -1,0 +1,478 @@
+/* ---------- Üretim zinciri ---------- */
+
+.top-buttons {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  gap: 6px;
+}
+
+.top-buttons button {
+  padding: 6px 12px;
+  background: rgba(34, 38, 31, 0.92);
+}
+
+.top-buttons button.active {
+  background: #6a8f3c;
+}
+
+.char-window.production {
+  top: 48px;
+  left: 12px;
+  right: 12px;
+  width: auto;
+  height: calc(100% - 60px);
+}
+
+.production-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+.production-list {
+  flex: 0 0 170px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 6px 8px;
+  overflow-y: auto;
+  border-right: 1px solid #3c4535;
+}
+
+.production-list summary {
+  margin: 6px 0 3px;
+  cursor: pointer;
+  user-select: none;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #9fb38a;
+}
+
+.production-list button {
+  display: block;
+  width: 100%;
+  margin-bottom: 3px;
+  padding: 4px 6px;
+  text-align: left;
+}
+
+.production-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.flow {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.flow svg {
+  display: block;
+  margin: auto;
+}
+
+.flow-node {
+  cursor: pointer;
+}
+
+.flow-node rect {
+  fill: #2b3027;
+  stroke: #6b7560;
+  stroke-width: 1.5;
+}
+
+.flow-node:hover rect {
+  fill: #39402f;
+}
+
+.flow-node.root rect {
+  stroke: #ffe14d;
+  stroke-width: 2.5;
+}
+
+.flow-node.nature rect {
+  stroke: #5f9a4c;
+}
+
+.flow-node.material rect {
+  stroke: #b58a55;
+}
+
+.flow-node.food rect {
+  stroke: #d9734e;
+}
+
+.flow-node.tool rect {
+  stroke: #e0c060;
+}
+
+.flow-node.clothing rect {
+  stroke: #c78be0;
+}
+
+.flow-node.structure rect {
+  stroke: #9a9d92;
+}
+
+.flow-node.technology rect {
+  stroke: #64a8e6;
+}
+
+.flow-name {
+  fill: #e8e8e0;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.flow-detail {
+  fill: #9aa08f;
+  font-size: 10.5px;
+}
+
+.flow-label {
+  fill: #c9cdbf;
+  font-size: 10.5px;
+  text-anchor: middle;
+  paint-order: stroke;
+  stroke: #22261f;
+  stroke-width: 3px;
+}
+
+.flow-edge {
+  fill: none;
+  stroke-width: 1.5;
+}
+
+.flow-edge.input {
+  stroke: #d8dccb;
+}
+
+.flow-edge.tool {
+  stroke: #e0c060;
+  stroke-dasharray: 6 4;
+}
+
+.flow-edge.knowledge {
+  stroke: #64a8e6;
+  stroke-dasharray: 2 4;
+}
+
+.flow-edge.nature {
+  stroke: #5f9a4c;
+}
+
+.flow-arrow.input {
+  fill: #d8dccb;
+}
+
+.flow-arrow.tool {
+  fill: #e0c060;
+}
+
+.flow-arrow.knowledge {
+  fill: #64a8e6;
+}
+
+.flow-arrow.nature {
+  fill: #5f9a4c;
+}
+
+.flow-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 6px 12px;
+  border-top: 1px solid #3c4535;
+  color: #9aa08f;
+  font-size: 11px;
+}
+
+.flow-swatch {
+  display: inline-block;
+  width: 22px;
+  margin-right: 6px;
+  vertical-align: middle;
+  border-top: 2px solid;
+}
+
+.flow-swatch.input {
+  border-color: #d8dccb;
+}
+
+.flow-swatch.tool {
+  border-top-style: dashed;
+  border-color: #e0c060;
+}
+
+.flow-swatch.knowledge {
+  border-top-style: dotted;
+  border-color: #64a8e6;
+}
+
+.flow-swatch.nature {
+  border-color: #5f9a4c;
+}
+
+.window-body {
+  overflow-y: auto;
+  padding: 6px 10px 10px;
+}
+
+.history {
+  font-size: 12px;
+}
+
+.history ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+canvas.flag {
+  display: block;
+  margin: 4px auto;
+}
+
+canvas.flag-badge {
+  display: inline-block;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.flag-slot {
+  display: flex;
+}
+
+.history summary {
+  margin: 6px 0 2px;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 600;
+  color: #9fb38a;
+}
+
+.history li {
+  padding: 4px 0;
+  border-bottom: 1px solid #333a2e;
+}
+
+.history time {
+  display: block;
+  color: #8a917f;
+  font-size: 11px;
+}
+
+.person-link {
+  color: #9fd3ff;
+  cursor: pointer;
+  text-decoration: underline dotted;
+}
+
+.person-link:hover {
+  color: #fff;
+}
+
+.bar-row {
+  display: grid;
+  grid-template-columns: 120px 1fr 36px;
+  align-items: center;
+  gap: 6px;
+  margin: 2px 0;
+}
+
+.bar-row .label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.bar-row .value {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  color: #b9bdb0;
+  font-size: 11px;
+}
+
+.bar {
+  height: 8px;
+  background: #1c1f19;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.bar .fill {
+  height: 100%;
+  background: #7fb24a;
+}
+
+.bar-row.drive .fill {
+  background: #5d8fd6;
+}
+
+.bar-row.drive.active {
+  font-weight: 700;
+  color: #ffe14d;
+}
+
+.bar-row.drive.active .fill {
+  background: #ffe14d;
+}
+
+.bar-row.drive.inactive {
+  opacity: 0.35;
+}
+
+.info {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 8px 0 0;
+  font-size: 12px;
+}
+
+.info dt {
+  color: #9aa08f;
+}
+
+.info dd {
+  margin: 0;
+}
+
+.sidebar-tabs {
+  flex: 1;
+  min-height: 240px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-body,
+.tab-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.tab-view > .hint {
+  margin-top: 6px;
+  font-size: 11px;
+}
+
+.event-log {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  font-size: 12px;
+}
+
+.event-log li {
+  padding: 2px 0;
+  border-bottom: 1px solid #333a2e;
+}
+
+.event-log time {
+  color: #8a917f;
+  font-size: 11px;
+}
+
+.log-danger {
+  color: #ff8a8a;
+}
+
+.log-love {
+  color: #ffa6d2;
+}
+
+.log-conflict {
+  color: #ffc46b;
+}
+
+.log-build {
+  color: #d8b48a;
+}
+
+.log-social {
+  color: #9fd3ff;
+}
+
+.log-life {
+  color: #b7f59a;
+}
+
+.time-controls .weather {
+  color: #b9bdb0;
+  margin: -2px 0 6px;
+}
+
+.tabs button {
+  font-size: 11px;
+  padding: 4px 2px;
+}
+
+.items,
+.tech-list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  font-size: 12px;
+}
+
+.items li {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+  border-bottom: 1px solid #333a2e;
+}
+
+.items .value {
+  color: #b9bdb0;
+}
+
+.tech-list li.known {
+  color: #b7f59a;
+}
+
+.relation-list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+}
+
+.relation-list li {
+  padding: 4px 0;
+  border-bottom: 1px solid #333a2e;
+}
+
+.relation-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.relation-tag {
+  color: #e0c060;
+  font-size: 11px;
+}
+
+.relation-values {
+  color: #9aa08f;
+  font-size: 11px;
+}
+
+.bar-row.trait .fill {
+  background: #c08cff;
+}
+
+.bar-row.skill .fill {
+  background: #e0a84a;
+}

@@ -26,6 +26,11 @@ export class DrinkBehavior extends AnimalBehavior {
     if (!pond) this.nextSearch = world.now + RETRY_AFTER;
   }
 
+  quietFor(animal, world) {
+    if (this.shore) return 0;
+    return Math.max(this.nextSearch - world.now, AnimalBehavior.timeUntilBelow(animal, 'water', this.threshold));
+  }
+
   tick(animal, world, dt) {
     if (!this.shore) return true;
     if (!animal.moveTowards(this.shore, animal.walkSpeed, dt, world)) return false;

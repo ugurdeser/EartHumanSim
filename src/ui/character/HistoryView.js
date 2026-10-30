@@ -1,32 +1,39 @@
-import { el } from '../dom.js';
+import { LogType } from '../../core/EventLog.js';
+import { ChapterList } from '../ChapterList.js';
 
-/** Kişinin hayat hikâyesi: en yeni olay en üstte, olay anındaki yaşıyla. */
+/** Hikâyenin bölümleri; olayın türü hangi bölüme yazılacağını belirler. */
+const CHAPTERS = Object.freeze([
+  { name: '🌱 Yaşam', type: LogType.LIFE },
+  { name: '❤️ Aşk ve evlilik', type: LogType.LOVE },
+  { name: '🤝 Dostluk ve toplum', type: LogType.SOCIAL },
+  { name: '🔨 İş ve üretim', type: LogType.BUILD },
+  { name: '⚔ Çatışma', type: LogType.CONFLICT },
+  { name: '⚠ Tehlike', type: LogType.DANGER },
+  { name: '📝 Diğer', type: LogType.INFO },
+]);
+
+/** Kişinin hayat hikâyesi: konularına göre bölümlü, en yeni olay üstte, olay anındaki yaşıyla. */
 export class HistoryView {
   constructor(person, world) {
     this.person = person;
     this.world = world;
-    this.renderedCount = -1;
-    this.root = el('ul', { class: 'history' });
+    this.lastEntry = undefined;
+    this.list = new ChapterList('Henüz kayda değer bir olay yok.');
+    this.root = this.list.root;
   }
 
   update() {
-    const history = this.person.history;
-    if (history.length === this.renderedCount) return;
-    this.renderedCount = history.length;
+    const { entries } = this.person.history;
+    const last = entries[entries.length - 1] ?? null;
+    if (last === this.lastEntry) return;
+    this.lastEntry = last;
 
-    if (history.length === 0) {
-      this.root.replaceChildren(el('li', { class: 'hint', text: 'Henüz kayda değer bir olay yok.' }));
-      return;
-    }
     const now = this.world.now;
-    const items = [...history.entries].reverse().map((entry) =>
-      el(
-        'li',
-        { class: `log-${entry.type}` },
-        el('time', { text: `${entry.time} · ${this.person.ageAt(entry.simTime, now)} yaş` }),
-        el('div', { text: entry.message }),
-      ),
-    );
-    this.root.replaceChildren(...items);
+    const items = (type) =>
+      entries
+        .filter((entry) => entry.type === type)
+        .reverse()
+        .map((entry) => ({ time: `${entry.time} · ${this.person.ageAt(entry.simTime, now)} yaş`, message: entry.message }));
+    this.list.render(CHAPTERS.map(({ name, type }) => ({ id: type, name, logType: type, items: items(type) })));
   }
 }

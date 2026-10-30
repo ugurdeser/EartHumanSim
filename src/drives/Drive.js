@@ -48,7 +48,7 @@ export class Drive {
       this.urgency = 0;
       return 0;
     }
-    this.raw = clamp(this.computeRaw(person, world, dt), 0, Drive.MAX_RAW);
+    this.raw = clamp(this.computeRaw(person, world, dt), 0, this.constructor.MAX_RAW);
     this.urgency = this.raw * this.weight;
     return this.urgency;
   }

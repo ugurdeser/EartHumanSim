@@ -1,9 +1,11 @@
 import { LogType } from '../core/EventLog.js';
 import { Turkish } from '../core/Turkish.js';
+import { TechnologyKind } from './Technologies.js';
 
 const BASE_INVENTION_CHANCE = 0.02;
 const BASE_TEACH_CHANCE = 0.1;
 const MIN_LEARNING_AGE = 6;
+const TECHNIQUE_TEACH_FACTOR = 0.5; // yöntem anlatmak, bir aleti göstermekten zordur
 
 /** Zekânın asıl işe yaradığı yer: yeni teknikleri icat etmek ve başkalarından öğrenmek. */
 export class InventionService {
@@ -33,7 +35,8 @@ export class InventionService {
     const teachable = teacher.knowledge.teachableTo(learner.knowledge);
     if (teachable.length === 0) return null;
     const technology = this.world.rng.pick(teachable);
-    const chance = BASE_TEACH_CHANCE + learner.traits.intelligence * 0.3;
+    const ease = technology.kind === TechnologyKind.TECHNIQUE ? TECHNIQUE_TEACH_FACTOR : 1;
+    const chance = (BASE_TEACH_CHANCE + learner.traits.intelligence * 0.3) * ease;
     if (!this.world.rng.chance(chance)) return null;
 
     learner.knowledge.learn(technology);

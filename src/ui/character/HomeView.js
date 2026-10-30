@@ -18,6 +18,13 @@ export class HomeView {
     this.root = el('div', {}, this.info, el('h4', { text: 'Depo' }), this.stored);
   }
 
+  static #penRow({ pen }) {
+    if (!pen) return 'Yok';
+    const animals = pen.animals;
+    const tamed = animals.filter((a) => a.isTamed).length;
+    return `${animals.length} hayvan (${tamed} evcil, ${animals.length - tamed} tutsak)`;
+  }
+
   #constructionRow(home) {
     if (home.construction) return `inşaat sürüyor %${Math.round(home.constructionProgress * 100)}`;
     const next = home.nextShelter;
@@ -38,6 +45,8 @@ export class HomeView {
       ['Ocak', fire.isLit ? `🔥 Yanıyor (%${Math.round(fire.level * 100)} · ${formatDuration(fire.fuel)})` : 'Sönük'],
       ['Yakacak', home.storage.fuelSeconds > 0 ? `${formatDuration(home.storage.fuelSeconds)} yetecek kadar` : 'Yok'],
       ['Yiyecek', `${home.storage.foodCount} adet`],
+      ['Ağıl', HomeView.#penRow(home)],
+      ['Ekili bitki', `${home.livingPlants.length} adet`],
       ['Yaşayanlar', residents.length ? residents.flatMap((p, i) => [i > 0 ? ', ' : null, InfoView.link(p, ` (${p.age})`)]) : '—'],
     ];
     this.info.replaceChildren(...rows.flatMap(([key, value]) => [el('dt', { text: key }), el('dd', {}, value)]));

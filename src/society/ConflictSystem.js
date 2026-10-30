@@ -1,6 +1,11 @@
 import { CONFLICT } from '../config.js';
 import { LogType } from '../core/EventLog.js';
 import { Turkish } from '../core/Turkish.js';
+import { GroupChapter } from './GroupHistory.js';
+import { Infidelity } from './conflict/Infidelity.js';
+import { Justice } from './conflict/Justice.js';
+import { Raids } from './conflict/Raids.js';
+import { TheftCases } from './conflict/TheftCases.js';
 import { Kinship } from './Kinship.js';
 
 /**
@@ -11,6 +16,10 @@ export class ConflictSystem {
   constructor(world) {
     this.world = world;
     this.nextScan = 0;
+    this.justice = new Justice(this);
+    this.theft = new TheftCases(this);
+    this.infidelity = new Infidelity(this);
+    this.raids = new Raids(this);
   }
 
   get log() {
@@ -94,6 +103,7 @@ export class ConflictSystem {
       peacemaker.changeStatus(0.03);
       for (const person of [attacker, defender]) person.relationTo(peacemaker).changeRespect(0.05);
       this.log.add(`🕊 ${peacemaker.name}, ${attacker.name} ile ${Turkish.accusative(defender.name)} ayırdı`, LogType.CONFLICT, [peacemaker, attacker, defender]);
+      this.#recordFight(attacker, defender, `🕊 ${peacemaker.name}, ${attacker.name} ile ${Turkish.accusative(defender.name)} ayırdı (${reason})`);
       return null;
     }
 
@@ -103,9 +113,15 @@ export class ConflictSystem {
     winner.changeStatus(0.03);
     loser.changeStatus(-0.03);
     this.log.add(`👊 ${attacker.name} ile ${defender.name} ${reason} kavga etti, ${winner.name} kazandı`, LogType.CONFLICT, [attacker, defender]);
-    this.#report(attacker);
+    this.#recordFight(attacker, defender, `👊 ${attacker.name} ile ${defender.name} ${reason} kavga etti, ${winner.name} kazandı`);
+    this.#report(attacker, `${reason} kavga`);
     this.#wound(winner, loser);
     return loser;
+  }
+
+  /** Kavga, tarafların topluluklarının hikâyesine geçer. */
+  #recordFight(a, b, message) {
+    for (const group of new Set([a.group, b.group])) group?.record(this.world, GroupChapter.CONFLICT, message);
   }
 
   #power(person) {
@@ -129,126 +145,50 @@ export class ConflictSystem {
     const avengers = Kinship.closeRelatives(victim).filter((r) => r.alive && r.isAdult && r !== killer);
     for (const avenger of avengers) {
       avenger.relationTo(killer).changeAffinity(-CONFLICT.FEUD_AFFINITY);
-      avenger.addGrievance({ thief: killer, victimHome: null, portions: 0, time: this.world.now });
+      avenger.addGrievance({ thief: killer, victimHome: null, portions: 0, time: this.world.now, crime: `${victim.name} adlı kişiyi öldürmek`, kind: 'cinayet' });
     }
     if (avengers.length) this.log.add(`🩸 ${victim.name} öldürüldü, yakınları ${Turkish.dative(killer.name)} kan davası güdüyor`, LogType.DANGER, [killer, ...avengers]);
-    this.#markRivals(killer.group, victim.group);
+    this.markRivals(killer.group, victim.group);
   }
 
   /** Olayı görenler suçludan şikâyetçi olur. */
-  #report(offender) {
+  #report(offender, crime) {
     const { now } = this.world;
     for (const witness of this.world.peopleNear(offender.position, CONFLICT.WITNESS_RANGE, offender)) {
-      if (witness.isAdult) witness.addGrievance({ thief: offender, victimHome: null, portions: 0, time: now });
+      if (witness.isAdult) witness.addGrievance({ thief: offender, victimHome: null, portions: 0, time: now, crime, kind: 'kavga' });
     }
   }
 
-  #markRivals(a, b) {
-    if (a && b && a !== b) a.markRival(b);
+  markRivals(a, b, reason) {
+    if (!a || !b || a === b || a.isRival(b)) return;
+    a.markRival(b);
+    a.record(this.world, GroupChapter.CONFLICT, `💢 ${b.name} ile düşman olundu: ${reason}`);
+    b.record(this.world, GroupChapter.CONFLICT, `💢 ${a.name} ile düşman olundu: ${reason}`);
   }
 
-  // ---------- Yargı ----------
+  // ---------- Alt konular ----------
 
-  /** Şikâyetçi derdini lidere anlatır; artık hesabı lider sorar. */
   complain(person, leader, grievance) {
-    leader.addGrievance(grievance);
-    person.dropGrievance(grievance);
-    this.log.personal([person, leader], `🗣 ${person.name}, ${Turkish.dative(leader.name)} ${Turkish.accusative(grievance.thief.name)} şikâyet etti`, LogType.CONFLICT);
+    this.justice.complain(person, leader, grievance);
   }
 
   judge(judge, grievance) {
-    const { thief: offender, victimHome, portions } = grievance;
-    offender.offenses++;
-    offender.changeStatus(-0.12);
-    judge.changeStatus(0.04);
-    judge.relationTo(offender).changeAffinity(-0.2);
-    offender.relationTo(judge).changeAffinity(-0.2);
-    offender.relationTo(judge).changeRespect(0.1);
-    if (victimHome) offender.inventory.transferTo(victimHome.storage, (t) => t.isFood, portions);
-    // Aynı suç için diğer tanıkların şikâyeti de kapanır
-    for (const person of this.world.people) person.resolveGrievance(offender, victimHome);
-    const isLeader = offender.group?.leader === judge;
-    const verdict = isLeader ? this.#sentence(judge, offender) : 'hesap sordu';
-    this.log.add(`⚖ ${judge.name}, ${Turkish.ablative(offender.name)} ${verdict}`, LogType.CONFLICT, [judge, offender]);
+    this.justice.judge(judge, grievance);
   }
 
-  /** Liderin cezası suç sayısına göre ağırlaşır; topluluk bunun adil olup olmadığını tartar. */
-  #sentence(leader, offender) {
-    const group = offender.group;
-    const members = group.adults.filter((m) => m !== leader && m !== offender);
-    const judged = (delta) => members.forEach((m) => m.relationTo(leader).changeRespect(delta));
-    if (leader.isCloseRelativeOf(offender) || leader.relationTo(offender).affinity > CONFLICT.FAVOUR_AFFINITY) {
-      judged(-CONFLICT.UNFAIR_RESPECT);
-      return 'hesap sordu ama kayırıp serbest bıraktı';
-    }
-    if (offender.offenses >= CONFLICT.EXILE_OFFENSES) {
-      for (const member of members) member.relationTo(leader).changeRespect(member.relationTo(offender).affinity > 0.4 ? -CONFLICT.UNFAIR_RESPECT : CONFLICT.FAIR_RESPECT);
-      group.ban(offender);
-      this.world.social.groups.leave(offender);
-      return `hesap sordu ve onu ${group.name} topluluğundan sürdü`;
-    }
-    judged(CONFLICT.FAIR_RESPECT);
-    if (offender.offenses < CONFLICT.FINE_OFFENSES) return 'hesap sordu ve uyardı';
-    offender.home.storage.transferTo(leader.home.storage, (t) => t.isFood, CONFLICT.FINE_PORTIONS);
-    return 'hesap sordu ve yiyecek cezası verdi';
+  temptation(person, home) {
+    return this.theft.temptation(person, home);
   }
 
-  // ---------- Hırsızlık ----------
-
-  /** Görülmeyen hırsızlıkta failin kim olduğu bilinmez. */
   reportTheft(thief, home, portions) {
-    const owners = [...home.owners];
-    const witnesses = this.world.peopleNear(thief.position, CONFLICT.WITNESS_RANGE, thief).filter((p) => p.isAdult);
-    if (witnesses.length === 0) {
-      this.log.personal(owners, `🕵 Deposundan ${portions} parça eşya kayboldu, kimin aldığı görülmedi`, LogType.CONFLICT);
-      return;
-    }
-    thief.thefts++;
-    thief.changeStatus(-0.05);
-    this.log.add(`🕵 ${thief.name} başkasının deposundan ${portions} parça çalarken görüldü`, LogType.CONFLICT, [thief]);
-    this.#markRivals(thief.group, owners[0]?.group);
-    for (const person of witnesses) {
-      person.relationTo(thief).changeAffinity(-0.15);
-      person.addGrievance({ thief, victimHome: home, portions, time: this.world.now });
-    }
-    // İtibar: tanınmış hırsıza kimse güvenmez
-    if (thief.isKnownThief) thief.group?.adults.forEach((m) => m !== thief && m.relationTo(thief).changeAffinity(-CONFLICT.THIEF_DISTRUST));
+    this.theft.reportTheft(thief, home, portions);
   }
 
-  // ---------- Eş ilişkileri ----------
-
-  /** Birlikte olursa çocuk da olabilir; görülürse aldatılan eş öğrenir. */
   affair(cheater, lover) {
-    if (!lover.alive || (lover.relations.peek(cheater)?.attraction ?? 0) < CONFLICT.AFFAIR_CONSENT) return false;
-    this.world.social.mate(cheater, lover);
-    this.log.personal([cheater, lover], `🤫 ${cheater.name} ile ${lover.name} gizlice birlikte oldu`, LogType.LOVE);
-    for (const [person, other] of [[cheater, lover], [lover, cheater]]) {
-      if (person.partner?.alive && this.rng.chance(CONFLICT.DISCOVERY_CHANCE)) this.#discover(person, other);
-    }
-    return true;
+    return this.infidelity.affair(cheater, lover);
   }
 
-  #discover(cheater, lover) {
-    const spouse = cheater.partner;
-    if (!spouse) return;
-    const trust = spouse.relationTo(cheater);
-    trust.changeAffinity(-CONFLICT.BETRAYAL_AFFINITY);
-    trust.changeAttraction(-CONFLICT.BETRAYAL_ATTRACTION);
-    spouse.relationTo(lover).changeAffinity(-CONFLICT.BETRAYAL_AFFINITY);
-    this.log.add(`💔 ${spouse.name}, ${Turkish.genitive(cheater.name)} kendisini ${Turkish.dative(lover.name)} aldattığını öğrendi`, LogType.LOVE, [spouse, cheater]);
-    this.quarrel(spouse, cheater, 'aldatma yüzünden');
-    if (trust.affinity < CONFLICT.DIVORCE_AFFINITY && cheater.partner === spouse) this.world.social.divorce(spouse, cheater);
-  }
-
-  // ---------- Topluluklar arası ----------
-
-  /** Rakip yuvasından yiyecek çalmak; ev sahibi oradaysa kavga çıkar. */
   raid(raider, home) {
-    const taken = home.storage.transferTo(raider.inventory, (t) => t.isFood, CONFLICT.RAID_PORTIONS);
-    const owners = [...home.owners];
-    this.log.add(`⚔ ${raider.name}, ${home.label} deposuna baskın yaptı (${taken} yiyecek)`, LogType.CONFLICT, [raider, ...owners]);
-    this.#markRivals(raider.group, owners[0]?.group);
-    const defender = owners.find((o) => o.alive && o.isAdult && o.position.distanceTo(home.position) <= CONFLICT.DEFEND_RANGE);
-    if (defender) this.fight(raider, defender, 'baskın yüzünden');
+    this.raids.raid(raider, home);
   }
 }

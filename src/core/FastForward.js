@@ -45,20 +45,15 @@ export class FastForward {
   step() {
     if (!this.job) return false;
     const started = performance.now();
-    this.world.coarseTime = true;
-    try {
-      while (performance.now() - started < FRAME_BUDGET_MS) {
-        const step = Math.min(SIM.MAX_STEP, this.job.target - this.clock.time);
-        if (step <= 0) {
-          this.job = null;
-          return false;
-        }
-        this.clock.advance(step);
-        this.world.update(step);
+    while (performance.now() - started < FRAME_BUDGET_MS) {
+      const step = Math.min(SIM.MAX_STEP, this.job.target - this.clock.time);
+      if (step <= 0) {
+        this.job = null;
+        return false;
       }
-      return true;
-    } finally {
-      this.world.coarseTime = false;
+      this.clock.advance(step);
+      this.world.update(step);
     }
+    return true;
   }
 }

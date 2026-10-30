@@ -65,14 +65,22 @@ export class AnimalWindow {
     return animal.isYoung ? 'Yavru' : 'Yetişkin';
   }
 
+  static #ownerText({ domestication }) {
+    if (!domestication) return 'Yabani';
+    const state = domestication.tamed ? 'Evcil' : `Tutsak · alışma %${Math.round(domestication.progress * 100)}`;
+    return `${state} · ${domestication.owner.label}`;
+  }
+
   static #traitsText({ species }) {
-    const traits = [species.dangerous ? 'Tehlikeli' : null, species.huntable ? 'Avlanabilir' : null, species.domesticable ? 'Evcilleştirilebilir' : 'Evcilleşmez'];
+    const domestication = species.domestication ? (species.domestication.youngOnly ? 'Çok zor evcilleşir' : 'Evcilleştirilebilir') : 'Evcilleşmez';
+    const traits = [species.dangerous ? 'Tehlikeli' : null, species.huntable ? 'Avlanabilir' : null, domestication];
     return traits.filter(Boolean).join(' · ');
   }
 
   update() {
     const animal = this.animal;
     if (!animal) return;
+    if (animal.alive) animal.catchUp(this.world); // uyuyorsa ihtiyaçları güncel görünsün
     this.title.textContent = animal.displayName;
     this.status.textContent = animal.alive ? animal.activity : `Öldü (${animal.causeOfDeath})`;
 
@@ -82,6 +90,7 @@ export class AnimalWindow {
       ['Yaş', formatAge(animal.ageYears)],
       ['Durum', this.#stateText(animal)],
       ['Sürü', animal.herd ? `${animal.herd.size} hayvan` : 'Yalnız'],
+      ['Sahibi', AnimalWindow.#ownerText(animal)],
       ['Annesi', animal.mother ? (animal.mother.alive ? 'Yaşıyor' : 'Öldü') : 'Bilinmiyor'],
       ['Özellikler', AnimalWindow.#traitsText(animal)],
       ['Ürünleri', AnimalWindow.#stockText(animal)],

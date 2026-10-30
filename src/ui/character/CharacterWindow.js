@@ -1,6 +1,7 @@
 import { el, startWindowDrag } from '../dom.js';
 import { AbilitiesView } from './AbilitiesView.js';
 import { CapabilitiesView } from './CapabilitiesView.js';
+import { DeathReportView } from './DeathReportView.js';
 import { DrivesView } from './DrivesView.js';
 import { HistoryView } from './HistoryView.js';
 import { HomeView } from './HomeView.js';
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'relations', label: 'İlişkiler' },
   { id: 'inventory', label: 'Envanter' },
   { id: 'info', label: 'Bilgiler' },
+  { id: 'death', label: 'Ölüm Raporu' }, // yalnızca ölüler için görünür
 ];
 
 /**
@@ -76,9 +78,11 @@ export class CharacterWindow {
       info: new InfoView(person, this.world),
       relations: new RelationsView(person, this.world),
       home: new HomeView(() => person.home),
+      death: new DeathReportView(person),
     };
     this.needsSlot.replaceChildren(needs.root);
-    this.#showTab(this.activeTab);
+    if (person.alive && this.activeTab === 'death') this.activeTab = TABS[0].id;
+    this.#showTab(person.alive ? this.activeTab : 'death');
   }
 
   #showTab(tabId) {
@@ -119,6 +123,7 @@ export class CharacterWindow {
     this.title.textContent = `${p.sex.symbol} ${p.fullName} · ${p.age} yaş (${stage})${p.alive ? '' : ' ✝'}`;
     this.title.style.color = p.sex.color;
     this.followButton.classList.toggle('active', this.selection.follow);
+    this.tabButtons.at(-1).style.display = p.alive ? 'none' : '';
     this.activity.textContent = p.alive
       ? `${p.currentDrive ? `[${p.currentDrive.name}] ` : ''}${p.activity}`
       : `${p.age} yaşında öldü: ${p.causeOfDeath}`;

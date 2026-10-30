@@ -3,6 +3,7 @@ import { ForageProvider } from './ForageProvider.js';
 import { HomeStorageProvider } from './HomeStorageProvider.js';
 import { HuntingProvider } from './HuntingProvider.js';
 import { MilkingProvider } from './MilkingProvider.js';
+import { SlaughterProvider } from './SlaughterProvider.js';
 
 /**
  * Yiyecek stratejileri arasından en düşük maliyetliyi seçer.
@@ -13,6 +14,7 @@ const PROVIDERS = Object.freeze([
   new ForageProvider(),
   new FishingProvider(),
   new MilkingProvider(),
+  new SlaughterProvider(),
   new HuntingProvider(),
 ]);
 

@@ -31,6 +31,10 @@ export class ItemType {
   get isFuel() {
     return false;
   }
+
+  get isSeed() {
+    return false;
+  }
 }
 
 export class FoodType extends ItemType {
@@ -63,6 +67,13 @@ export class MaterialType extends ItemType {
 
   get isFuel() {
     return this.fuelSeconds > 0;
+  }
+}
+
+/** Tohum: ekilince hangi bitkiye dönüşeceğini bitki türünün `seed` alanı belirler. */
+export class SeedType extends MaterialType {
+  get isSeed() {
+    return true;
   }
 }
 

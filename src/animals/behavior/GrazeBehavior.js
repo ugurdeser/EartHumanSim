@@ -39,6 +39,17 @@ export class GrazeBehavior extends AnimalBehavior {
     return best;
   }
 
+  /** Otlağına varmış ve otluyorsa: doyana kadar. */
+  restTime(animal, world) {
+    if (!this.spot || animal.position.distanceTo(this.spot) > 0.01) return 0;
+    const rate = world.forageAt(animal.position) / this.grazeTime - 1 / animal.needs.profile.foodDuration;
+    return rate > 0 ? Math.max(0, (0.97 - animal.needs.food) / rate) : 0;
+  }
+
+  quietFor(animal) {
+    return this.spot ? 0 : AnimalBehavior.timeUntilBelow(animal, 'food', this.threshold);
+  }
+
   tick(animal, world, dt) {
     if (!this.spot) return true;
     if (!animal.moveTowards(this.spot, animal.walkSpeed, dt, world)) return false;

@@ -24,6 +24,11 @@ export class Animal extends Agent {
     return false;
   }
 
+  /** Şu an yırtıcıdan korunuyor mu (ör. gece ağılda)? */
+  isSheltered(_world) {
+    return false;
+  }
+
   /** Avlanınca/kesilince çıkanlar: [{ type, amount }]. */
   slaughterYields() {
     return [];

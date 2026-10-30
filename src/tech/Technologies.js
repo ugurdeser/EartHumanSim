@@ -97,6 +97,47 @@ export const Technologies = Object.freeze({
   WOOL_PANTS: garment('wool_pants', 'Yün pantolon', 0.45, 'wool_tshirt'),
   WOOL_BAG: garment('wool_bag', 'Yün sırt çantası', 0.4, 'weaving'),
 
+  // Fikirleri basit, uygulaması uzun: her fikrin ayrı bir uygulama becerisi (practice) vardır;
+  // fikri öğrenmek işi başlatır, işi iyi yapmak yalnızca o becerinin pratiğiyle gelişir.
+  ANIMAL_CAPTURE: new Technology('animal_capture', {
+    name: 'Hayvan yakalama',
+    kind: TECHNOLOGY,
+    skill: 'hayvan yakalamayı',
+    difficulty: 0.2,
+    practice: 'trapping',
+  }),
+  ANIMAL_PEN: new Technology('animal_pen', {
+    name: 'Ağıl yapma',
+    kind: TECHNOLOGY,
+    skill: 'ağıl yapmayı',
+    difficulty: 0.2,
+    prerequisites: ['animal_capture'],
+    practice: 'fencing',
+  }),
+  ANIMAL_TAMING: new Technology('animal_taming', {
+    name: 'Hayvan alıştırma',
+    kind: TECHNOLOGY,
+    skill: 'hayvan alıştırmayı',
+    difficulty: 0.25,
+    prerequisites: ['animal_pen'],
+    practice: 'taming',
+  }),
+  SLAUGHTERING: new Technology('slaughtering', {
+    name: 'Hayvan kesimi',
+    kind: TECHNOLOGY,
+    skill: 'hayvan kesmeyi',
+    difficulty: 0.2,
+    prerequisites: ['animal_taming', 'flint_knife'],
+    practice: 'butchery',
+  }),
+  PLANTING: new Technology('planting', {
+    name: 'Tohum ekme',
+    kind: TECHNOLOGY,
+    skill: 'tohum ekmeyi',
+    difficulty: 0.2,
+    practice: 'farming',
+  }),
+
   WOODEN_HUT: new Technology('wooden_hut', {
     name: 'Ahşap kulübe',
     kind: TECHNOLOGY,
@@ -121,6 +162,25 @@ export const Technologies = Object.freeze({
 });
 
 export const ALL_TECHNOLOGIES = Object.freeze(Object.values(Technologies));
+
+const T = Technologies;
+
+/** Arayüzdeki gruplar. Yeni teknoloji eklenince buradaki grubuna da yazılır. */
+export const TECHNOLOGY_GROUPS = Object.freeze([
+  ['Temel yaşam', [T.FIRE_MAKING, T.COOKING, T.COMMUNAL_STORAGE, T.POTTERY]],
+  ['Aletler ve silahlar', [T.STONE_AXE, T.FISHING_ROD, T.SPEAR, T.FLINT_KNIFE]],
+  ['Hayvancılık', [T.ANIMAL_CAPTURE, T.ANIMAL_PEN, T.ANIMAL_TAMING, T.SLAUGHTERING]],
+  ['Tarım', [T.PLANTING]],
+  [
+    'Deri işçiliği',
+    [T.HIDE_CLOAK, T.HIDE_WORKING, T.STITCHING, T.LEATHER_BOOTS, T.LEATHER_HAT, T.LEATHER_GLOVES, T.LEATHER_VEST, T.LEATHER_SHIRT, T.LEATHER_PANTS, T.LEATHER_JACKET, T.LEATHER_BAG],
+  ],
+  [
+    'Yün işçiliği',
+    [T.SPINNING, T.KNITTING, T.WEAVING, T.WOOL_SOCKS, T.WOOL_HAT, T.WOOL_GLOVES, T.WOOL_SWEATER, T.WOOL_TSHIRT, T.WOOL_SHIRT, T.WOOL_PANTS, T.WOOL_BAG],
+  ],
+  ['Yapılar', [T.WOODEN_HUT, T.STONE_HOUSE, T.STONE_ROAD]],
+]);
 
 /** Başlangıçta insanların bilebileceği temel teknikler. */
 export const BASIC_TECHNOLOGIES = Object.freeze([

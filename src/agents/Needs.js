@@ -26,7 +26,8 @@ export class Needs {
 
     if (this.food <= 0 || this.water <= 0) {
       this.health = clamp01(this.health - dt / NEEDS.STARVATION_TIME);
-      return 'açlık / susuzluk';
+      if (this.water > 0) return 'açlık';
+      return this.food > 0 ? 'susuzluk' : 'açlık ve susuzluk';
     }
     if (this.warmth <= 0) {
       this.health = clamp01(this.health - dt / NEEDS.FREEZING_TIME);

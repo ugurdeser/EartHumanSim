@@ -23,6 +23,27 @@ export class AnimalBrain {
     if (this.current?.tick(animal, world, dt)) this.current = null;
   }
 
+  /**
+   * Hayvan kaç saniye uyuyabilir: yürüyen davranışın izin verdiği süre, diğer davranışlardan
+   * en erken devreye girecek olanla sınırlanır. 0 = adım adım izlenmeli.
+   */
+  restTime(animal, world) {
+    const current = this.current;
+    if (!current) return 0;
+    let rest = current.restTime(animal, world);
+    for (const behavior of this.behaviors) {
+      if (rest <= 0) return 0;
+      if (behavior !== current) rest = Math.min(rest, behavior.quietFor(animal, world));
+    }
+    return rest;
+  }
+
+  /** Uyanınca: yürüyen davranış uyunan süreyle bir kez ilerler, sonra hemen yeniden düşünülür. */
+  resume(animal, world, slept) {
+    if (this.current?.tick(animal, world, slept)) this.current = null;
+    this.timer = 0;
+  }
+
   #choose(animal, world) {
     let best = null;
     let bestUrgency = 0;

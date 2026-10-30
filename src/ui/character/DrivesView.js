@@ -24,7 +24,7 @@ export class DrivesView {
     const p = this.person;
     for (const drive of p.drives.list) {
       const bar = this.bars.get(drive.id);
-      bar.set(drive.urgency / Drive.MAX_RAW, drive.urgency.toFixed(2));
+      bar.set(Math.min(1, drive.urgency / Drive.MAX_RAW), drive.urgency.toFixed(2));
       bar.row.classList.toggle('active', drive === p.currentDrive);
       bar.row.classList.toggle('inactive', !p.alive || !drive.isApplicable(p));
     }

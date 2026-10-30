@@ -1,6 +1,8 @@
 import { COMMUNITY } from '../config.js';
 import { LogType } from '../core/EventLog.js';
 import { Group } from './Group.js';
+import { GroupChapter } from './GroupHistory.js';
+import { Laws } from './laws/Laws.js';
 
 const GROUP_COLORS = ['#ff9f1c', '#2ec4b6', '#9b5de5', '#f15bb5', '#00bbf9', '#e63946', '#8ac926'];
 
@@ -44,20 +46,24 @@ export class GroupManager {
   #tryFound(a, b) {
     if (a.isFemale || b.isFemale || !GroupManager.#areFriends(a, b)) return null;
     const group = this.#create(a.home.position.clone());
+    group.founders = [a, b];
     this.join(a, group);
     this.join(b, group);
     this.world.log.add(`🤝 ${a.name} ve ${b.name} "${group.name}" topluluğunu kurdu`, LogType.SOCIAL, [a, b]);
+    group.record(this.world, GroupChapter.FOUNDING, `🏕 ${a.name} ve ${b.name} bu topluluğu kurdu: birbirlerine güvenen iki dosttular`);
     return group;
   }
 
   /** Kişi topluluğa kendi seçer: oradaki dostuna güvenmeli, lidere saygısını yitirmemiş olmalı. */
   #tryJoin(person, member) {
     const group = member.group;
-    if (group.banned.has(person) || person.relationTo(member).affinity < COMMUNITY.FRIEND_AFFINITY) return null;
+    if (group.constitution.is(Laws.STRANGERS, 'closed')) return null;
+    if (GroupManager.#household(person).some((m) => group.banned.has(m)) || person.relationTo(member).affinity < COMMUNITY.FRIEND_AFFINITY) return null; // sürgün eşinin arkasından dönemez
     const respect = group.leader ? person.relations.peek(group.leader)?.respect ?? 0 : 0;
     if (respect < COMMUNITY.JOIN_RESPECT) return null;
     this.join(person, group);
     this.world.log.add(`🤝 ${person.name} ${group.name} topluluğuna katıldı`, LogType.SOCIAL, [person, member]);
+    group.record(this.world, GroupChapter.MEMBERS, `🤝 ${person.name} katıldı: dostu ${member.name} sayesinde`);
     return group;
   }
 
@@ -83,7 +89,11 @@ export class GroupManager {
   /** Evlilikte eşler aynı toplulukta olur: varsa kocanınkinde, yoksa karınınkinde. */
   uniteCouple(husband, wife) {
     const group = husband.group ?? wife.group;
-    if (group) this.join(husband, group);
+    if (!group) return;
+    const newcomer = husband.group === group ? wife : husband;
+    if (newcomer.group !== group) group.record(this.world, GroupChapter.MEMBERS, `💍 ${newcomer.name} evlilikle katıldı`);
+    if (newcomer.group && newcomer.group !== group) newcomer.group.lawMaking.press(Laws.MARRIAGE, `${newcomer.name} evlenip başka topluluğa gidince`, 2);
+    this.join(husband, group);
   }
 
   /** Kişi hanesiyle topluluktan ayrılır. */
@@ -94,6 +104,7 @@ export class GroupManager {
   /** Üyelerin bir kısmı hanesiyle ayrılıp yeni, rakip bir topluluk kurar. */
   split(group, members) {
     const fresh = this.#create(members[0].home.position.clone());
+    fresh.founders = members.slice(0, 2);
     for (const member of members) this.join(member, fresh);
     fresh.markRival(group);
     return fresh;
@@ -114,5 +125,6 @@ export class GroupManager {
     group.members.forEach((m) => group.remove(m));
     this.groups = this.groups.filter((g) => g !== group);
     for (const other of group.rivals) other.rivals.delete(group);
+    group.record(this.world, GroupChapter.FOUNDING, '🏚 Topluluk dağıldı: geride birlikte yaşayacak kimse kalmadı');
   }
 }

@@ -10,8 +10,9 @@ import { DriveCategory } from '../DriveCategory.js';
 
 const COMFORTABLE_FOOD = 12;
 const WINTER_FOOD = 60; // sonbaharda kış için istenen stok
-const WINTER_FUEL = 6 * DAY; // kış için depoda istenen yakıt (yanma süresi)
+const WINTER_FUEL = 30 * DAY; // kış için depoda istenen yakıt (yanma süresi)
 const PREPARE_DAYS = 60; // kışa bu kadar gün kala hazırlık başlar
+const CHILLED = 0.6; // bundan üşüyen yakacak için dışarıda kalmaz, ocağa döner
 const THEFT_RANGE = 800;
 const LOOT_PIECES = 3;
 
@@ -33,7 +34,7 @@ export class HoardingDrive extends Drive {
   }
 
   #needsFuel(person, world) {
-    return this.#winterUrgency(world) > 0 && person.home.storage.fuelSeconds < WINTER_FUEL;
+    return this.#winterUrgency(world) > 0 && person.needs.warmth >= CHILLED && person.home.storage.fuelSeconds < WINTER_FUEL;
   }
 
   computeRaw(person, world, dt) {
@@ -42,7 +43,8 @@ export class HoardingDrive extends Drive {
     const preparing = urgency > 0 && world.calendar.season !== Season.WINTER;
     const target = preparing ? WINTER_FOOD : COMFORTABLE_FOOD;
     const foodStock = Math.min(1, (person.home.storage.foodCount + person.inventory.foodCount) / target);
-    const fuelWorry = this.#needsFuel(person, world) ? 0.4 : 0;
+    // depo boşaldıkça yakacak kaygısı büyür
+    const fuelWorry = this.#needsFuel(person, world) ? 0.4 + 0.8 * (1 - person.home.storage.fuelSeconds / WINTER_FUEL) : 0;
     // kış yaklaşınca hazırlık zamanla biriken baskıyı beklemez
     const drive = Math.max(this.pressure, urgency);
     return drive * (1 - foodStock) + fuelWorry * drive;
@@ -59,12 +61,18 @@ export class HoardingDrive extends Drive {
     return gather ? this.#stockpile(person, gather, 'İstif yapıyor', (t) => t.isFood) : null;
   }
 
-  /** Açgözlülük: adalet duygusu zayıf olan, karnı tok olsa da komşu deposuna göz dikebilir. */
+  /**
+   * Açgözlülük bir hesaptır: stoğu yeten çalmaz; yetmeyen, daha zengin bir komşunun deposunu
+   * yakalanma riski, dostluk, yasa ve yakındaki doğal yiyecekle tartar.
+   */
   #temptation(person, world) {
     if (person.isChild || person.drives.get('justice').weight >= CONFLICT.GREED_SCRUPLES) return null;
-    if (!world.rng.chance(CONFLICT.GREED_CHANCE * world.social.conflicts.intensity)) return null;
+    const own = person.home.storage.foodCount + person.inventory.foodCount;
+    const scarcity = 1 - Math.min(1, own / COMFORTABLE_FOOD);
+    if (!world.rng.chance(CONFLICT.GREED_CHANCE * world.social.conflicts.intensity * scarcity)) return null;
     const victim = world.findHomeWithFood(person.position, THEFT_RANGE, person.home);
-    if (!victim) return null;
+    if (!victim || victim.storage.foodCount <= own) return null;
+    if (!world.rng.chance(world.social.conflicts.temptation(person, victim))) return null;
     return new SequenceAction('Komşu deposuna göz dikti', [
       new MoveToAction('Gizlice depoya gidiyor', victim.position, { arriveDistance: 2 }),
       new CallbackAction('Çalıyor', (p, w) => {

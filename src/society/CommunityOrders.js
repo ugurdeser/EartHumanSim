@@ -7,6 +7,7 @@ import { FoodPlanner } from '../ai/food/FoodPlanner.js';
 import { MaterialSources } from '../ai/materials/MaterialSources.js';
 import { Items } from '../items/Items.js';
 import { Technologies } from '../tech/Technologies.js';
+import { Laws } from './laws/Laws.js';
 
 const winterIsNear = (world) => world.calendar.daysUntil(Season.WINTER) <= COMMUNITY.WINTER_WATCH;
 
@@ -57,6 +58,7 @@ export const COMMUNITY_ORDERS = Object.freeze([
     skills: ['hunting'],
     need: (group, world) => {
       const shortage = 1 - group.stock.food / (group.size * COMMUNITY.FOOD_PER_HEAD);
+      if (group.constitution.is(Laws.RAIDS, 'forbidden')) return 0;
       const desperate = world.calendar.year >= CONFLICT.RAID_YEAR && shortage > CONFLICT.RAID_SHORTAGE;
       return desperate && group.raidTarget() ? shortage * COMMUNITY.WINTER_FOOD_WEIGHT : 0;
     },

@@ -1,4 +1,8 @@
+import { FlagPainter } from '../render/FlagPainter.js';
+import { Flag } from '../society/Flag.js';
 import { el } from './dom.js';
+
+const BADGE_DOT = 3;
 
 /** Topluluklar: lideri, geçerli emri, ortak erzakı ve üyeleri. Üyeye tıklayınca kişi, karta tıklayınca topluluk açılır. */
 export class CommunityPanel {
@@ -36,12 +40,20 @@ export class CommunityPanel {
     return `📣 ${group.order.shout} (+%${Math.round((group.orderBonus - 1) * 100)} hız)`;
   }
 
+  /** Ad yanındaki küçük bayrak (henüz çizilmediyse boş). */
+  static flagBadge(group) {
+    if (!group.flag) return null;
+    const badge = el('canvas', { class: 'flag-badge', width: String(Flag.width * BADGE_DOT), height: String(Flag.height * BADGE_DOT), title: `Bayrak: ${group.flag.description}` });
+    FlagPainter.draw(badge.getContext('2d'), group.flag, 0, 0, BADGE_DOT);
+    return badge;
+  }
+
   #card(group) {
     const { food, fuelSeconds } = group.stock;
     return el(
       'div',
       { class: `family${group === this.selection.group ? ' selected' : ''}`, 'data-group': group.id, title: 'Topluluk bilgisini göster' },
-      el('div', { class: 'family-head community-head' }, el('strong', { text: group.name, style: { color: group.color } }), el('span', { text: `${group.size} kişi · ${food} yiyecek · ${Math.round(fuelSeconds / 3600)} saat yakacak` })),
+      el('div', { class: 'family-head community-head' }, el('strong', { style: { color: group.color } }, CommunityPanel.flagBadge(group), group.name), el('span', { text: `${group.size} kişi · ${food} yiyecek · ${Math.round(fuelSeconds / 3600)} saat yakacak` })),
       el('div', { class: 'community-order', text: CommunityPanel.orderText(group) }),
       el(
         'div',

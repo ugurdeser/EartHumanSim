@@ -14,6 +14,8 @@ export class Home extends Entity {
     this.fire = new Fire();
     this.shelterLevel = 0;
     this.construction = null; // { level, progress } — malzemesi ödenmiş inşaat
+    this.pen = null; // varsa ağıl
+    this.plants = []; // bu yuvanın ektiği bitkiler
   }
 
   /** Haritada ve panelde görünen sahiplik etiketi. */
@@ -46,6 +48,22 @@ export class Home extends Entity {
 
   get constructionProgress() {
     return this.construction ? this.construction.progress / SHELTER_LEVELS[this.construction.level].work : 0;
+  }
+
+  /** Yaşayan ekili bitkiler (ölenler listeden düşer). */
+  get livingPlants() {
+    this.plants = this.plants.filter((p) => p.alive);
+    return this.plants;
+  }
+
+  /** Birleşen yuvanın ağılı (kendi ağılı yoksa) ve ekili bitkileri bu yuvaya geçer. */
+  adoptHoldings(other) {
+    this.plants.push(...other.plants);
+    other.plants = [];
+    if (this.pen || !other.pen) return;
+    this.pen = other.pen;
+    this.pen.home = this;
+    other.pen = null;
   }
 
   addOwner(person) {

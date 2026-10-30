@@ -26,20 +26,28 @@ export class HuntBehavior extends AnimalBehavior {
   urgency(animal, world) {
     if (this.prey) return 0.9;
     const { threshold } = this.profile;
-    if (animal.isYoung || animal.needs.food >= threshold || world.now < this.restUntil) return 0;
+    if (animal.domestication || animal.isYoung || animal.needs.food >= threshold || world.now < this.restUntil) return 0;
     this.candidate = this.#findPrey(animal, world);
     return this.candidate ? 0.7 + (threshold - animal.needs.food) : 0;
   }
 
-  start() {
+  start(_animal, world) {
     if (this.prey) return;
     this.prey = this.candidate;
     this.elapsed = 0;
+    // kovalanan sürü uyuyorsa uyanır (kaçabilsin)
+    if (this.prey instanceof Animal) this.prey.alert(world);
+  }
+
+  quietFor(animal, world) {
+    if (this.prey) return 0;
+    if (animal.domestication || animal.isYoung) return Infinity;
+    return Math.max(this.restUntil - world.now, AnimalBehavior.timeUntilBelow(animal, 'food', this.profile.threshold));
   }
 
   #findPrey(animal, world) {
     const { detectRadius } = this.profile;
-    const prey = world.nearestAnimal(animal.position, detectRadius, (a) => a.isHuntable);
+    const prey = world.nearestAnimal(animal.position, detectRadius, (a) => a.species.huntable && !a.isSheltered(world));
     if (prey) return prey.animal;
     if (!world.rng.chance(animal.genome.get('ferocity'))) return null;
     let best = null;

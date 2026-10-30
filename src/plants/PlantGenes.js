@@ -9,13 +9,14 @@ export const plantGenes = (...extra) =>
   ]);
 
 /** Config'teki tür ayarlarını Plant'ın beklediği profile çevirir. */
-export const speciesProfile = (config, { name, layer, genes, seedSeasons, germination }) =>
+export const speciesProfile = (config, { name, layer, genes, seedSeasons, germination, seed = null }) =>
   Object.freeze({
     name,
     layer,
     genes,
     seedSeasons,
     germination,
+    seed, // ekilebilir tohumu (yoksa null)
     radius: config.RADIUS,
     maturity: config.MATURITY,
     lifespan: config.LIFESPAN,

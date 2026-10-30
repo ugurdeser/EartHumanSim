@@ -10,6 +10,7 @@ export class Tree extends Plant {
     name: 'Ağaç',
     layer: 'trees',
     genes: plantGenes({ id: 'yield', name: 'Meyve verimi' }),
+    seed: Items.FRUIT_SEED,
     seedSeasons: [Season.AUTUMN],
     germination: (world, x, y) => world.biomes.treeChance(x, y),
   });
@@ -17,6 +18,11 @@ export class Tree extends Plant {
   constructor(x, y, { fruitful = false, ...options }) {
     super(x, y, { ...options, food: Items.FRUIT, regrowTime: PLANTS.TREE_REGROW });
     this.fruitful = fruitful;
+  }
+
+  /** Ekilen meyve çekirdeğinden meyveli ağaç çıkar. */
+  static sownOptions() {
+    return { fruitful: true };
   }
 
   /** Meyveli ağacın tohumundan meyveli ağaç çıkar. */

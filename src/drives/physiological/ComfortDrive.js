@@ -10,6 +10,7 @@ const HOME_RANGE = 1200;
 const TREE_SHADE_RANGE = 150;
 const MAX_REST = 9 * HOUR;
 const COLD_THRESHOLD = 0.8;
+const FREEZING = 0.3; // bundan üşüyen yağmur dinmesini beklemez, ateş arar
 const LOW_FIRE = 0.3;
 const SLEEPY_FATIGUE = 0.2; // gece bundan yorgun olan yatar
 const MAX_SHELTER = 6 * HOUR;
@@ -35,7 +36,8 @@ export class ComfortDrive extends Drive {
 
   /** Açıktaki kişi kötü havadan kaçar; eve uzaksa boşuna yola çıkmaz. */
   #shelterNeed(person, world) {
-    if (person.isSheltered || !ActionFactory.isNearHome(person, HOME_RANGE)) return 0;
+    if (person.isSheltered || !person.home.hasShelter || person.needs.warmth < FREEZING) return 0;
+    if (!ActionFactory.isNearHome(person, HOME_RANGE)) return 0;
     return world.weather.shelterUrge;
   }
 
@@ -51,7 +53,7 @@ export class ComfortDrive extends Drive {
       ActionFactory.goHome(person, `${world.weather.current.name} havadan eve kaçıyor`),
       new PerformAction('Hava dinene kadar evde bekliyor', MAX_SHELTER, {
         onTick: (p, _w, dt) => p.needs.rest(dt, p.home.restQuality),
-        until: (_p, w) => w.weather.shelterUrge < 0.2,
+        until: (p, w) => w.weather.shelterUrge < 0.2 || p.needs.warmth < FREEZING,
       }),
     ]);
   }
@@ -59,19 +61,21 @@ export class ComfortDrive extends Drive {
   /** Eve git, ocağı besle (yakıt yoksa önce topla), ateş başında ısın. */
   #warmUp(person, world) {
     const fire = person.home.fire;
-    const neighbour = ActionFactory.canKindle(person) ? null : world.findNearestLitHome(person.position, FIRE.NEIGHBOUR_RANGE);
-    if (neighbour && !person.isDependent) return this.#warmAtNeighbour(neighbour);
     const hasFuel = person.inventory.fuelSeconds > 0 || person.home.storage.fuelSeconds > 0;
-    if (!person.needsCare && fire.level < LOW_FIRE && !hasFuel) {
-      const gather = ActionFactory.gatherFuel(person, world);
-      if (gather) return gather;
+    const noFire = fire.level < LOW_FIRE && !hasFuel; // ocağı sönen, donarken odun aramaya çıkmaz
+    const neighbour = ActionFactory.canKindle(person) && !noFire ? null : world.findNearestLitHome(person.position, FIRE.NEIGHBOUR_RANGE);
+    if (neighbour && !person.isDependent) return this.#warmAtNeighbour(neighbour);
+    if (!person.isDependent && fire.level < LOW_FIRE && !hasFuel) {
+      const fuel = ActionFactory.fetchCommunalFuel(person) ?? ActionFactory.gatherFuel(person, world);
+      if (fuel) return fuel;
     }
     return new SequenceAction('Isınmaya gidiyor', [
       ActionFactory.goHome(person, 'Ocağına dönüyor'),
       ActionFactory.feedFire(person),
       new PerformAction(world.clock.isNight ? 'Ateş başında uyuyor' : 'Ateş başında ısınıyor', MAX_REST, {
         onTick: (p, _w, dt) => p.needs.rest(dt, p.home.restQuality),
-        until: (p, w) => p.needs.warmth >= 0.95 && (!w.clock.isNight || p.needs.energy >= 0.98),
+        // ateş sönünce yakmayı bilen oturmaz, yakıt arar
+        until: (p, w) => (!p.home.fire.isLit && ActionFactory.canKindle(p)) || (p.needs.warmth >= 0.95 && (!w.clock.isNight || p.needs.energy >= 0.98)),
       }),
     ]);
   }
@@ -81,7 +85,7 @@ export class ComfortDrive extends Drive {
     return new SequenceAction('Komşu ateşine gidiyor', [
       new MoveToAction(`${home.label} ocağına gidiyor`, home.position, { arriveDistance: 3 }),
       new PerformAction('Komşu ateşinde ısınıyor', MAX_SHELTER, {
-        until: (p) => p.needs.warmth >= 0.95,
+        until: (p) => p.needs.warmth >= 0.95 || !home.fire.isLit,
       }),
     ]);
   }

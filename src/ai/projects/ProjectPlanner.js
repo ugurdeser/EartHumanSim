@@ -1,4 +1,8 @@
 import { ALL_RECIPES } from '../../tech/Recipes.js';
+import { PlantingProject } from '../farming/PlantingProject.js';
+import { CaptureAnimalProject } from '../husbandry/CaptureAnimalProject.js';
+import { PenProject } from '../husbandry/PenProject.js';
+import { TendAnimalsProject } from '../husbandry/TendAnimalsProject.js';
 import { CraftToolProject } from './CraftToolProject.js';
 import { ExperimentProject } from './ExperimentProject.js';
 import { HelpBuildProject } from './HelpBuildProject.js';
@@ -11,6 +15,10 @@ const PROJECTS = Object.freeze([
   new ShelterProject(),
   new HelpBuildProject(),
   new RoadProject(),
+  new PenProject(),
+  new TendAnimalsProject(),
+  new CaptureAnimalProject(),
+  new PlantingProject(),
   new ExperimentProject(),
 ]);
 

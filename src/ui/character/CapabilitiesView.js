@@ -1,3 +1,4 @@
+import { Skills } from '../../agents/Skills.js';
 import { ALL_TECHNOLOGIES, TechnologyKind } from '../../tech/Technologies.js';
 import { el } from '../dom.js';
 
@@ -13,6 +14,13 @@ export class CapabilitiesView {
     this.root = el('div', { class: 'capabilities' });
   }
 
+  /** Fikrin uygulama becerisi: "· uygulama: Çırak %12" */
+  #practiceNote(technology) {
+    if (!technology.practice) return '';
+    const level = this.person.skills.get(technology.practice);
+    return ` · uygulama: ${Skills.rankOf(level)} %${Math.round(level * 100)}`;
+  }
+
   update() {
     const { knowledge } = this.person;
     this.root.replaceChildren(
@@ -21,7 +29,7 @@ export class CapabilitiesView {
         return [
           el('h4', { text: `${title} (${known.length})` }),
           known.length
-            ? el('ul', { class: 'tech-list' }, known.map((t) => el('li', { class: 'known' }, `✔ ${t.name}`)))
+            ? el('ul', { class: 'tech-list' }, known.map((t) => el('li', { class: 'known' }, `✔ ${t.name}${this.#practiceNote(t)}`)))
             : el('p', { class: 'hint', text: 'Henüz öğrenmedi.' }),
         ];
       }),

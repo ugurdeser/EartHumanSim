@@ -12,16 +12,18 @@ const WARINESS_FADE = 3 * DAY; // avlanan sürü bu sürede sakinleşir
  * sığınma mevsiminde (kış) en yakın yamaca gider ve orada kalır, yamaç yoksa olduğu yerde bekler.
  */
 export class Herd {
-  constructor(center, { maxSize, shelterSeasons = [], roams = true }) {
+  constructor(center, { maxSize, shelterSeasons = [], roams = true, tether = null }) {
     this.center = center.clone();
     this.maxSize = maxSize;
     this.shelterSeasons = shelterSeasons;
     this.roams = roams; // false: merkez yerinden oynamaz (ör. göletteki balıklar)
+    this.tether = tether; // varsa ağıl: gündüz çevresinde otlar, gece döner
     this.target = null;
     this.shelter = null; // sığınma mevsiminde seçilen yamaç
     this.sheltering = false;
     this.alarmedAt = -Infinity;
     this.members = new Set();
+    this.lastUpdate = null; // sürü kendi saatini tutar: hangi üye uyanıksa o ilerletir
   }
 
   get size() {
@@ -58,20 +60,37 @@ export class Herd {
     return clamp01(1 - (now - this.alarmedAt) / WARINESS_FADE);
   }
 
-  update(world, dt) {
-    if (!this.roams) return;
+  /** Uyuyan üyeler dahil tüm sürüyü uyandırır (kovalanma, avcı). */
+  wakeAll(world) {
+    for (const member of this.members) member.wake(world);
+  }
+
+  /** Son güncellemeden bu yana geçen süre kadar ilerler; aynı adımda ikinci çağrı bir şey yapmaz. */
+  update(world) {
+    const dt = this.lastUpdate === null ? 0 : world.now - this.lastUpdate;
+    this.lastUpdate = world.now;
+    if (dt <= 0 || !this.roams) return;
     if (this.shelterSeasons.includes(world.calendar.season)) return this.#shelter(world, dt);
     this.sheltering = false;
     this.shelter = null;
+    if (this.tether) return this.#tended(world, dt);
     if (!this.target || this.center.distanceTo(this.target) < 5) this.target = this.#nextPasture(world);
     this.#moveCenter(this.target, dt);
   }
 
-  #nextPasture(world) {
+  /** Ağıl sürüsü: gündüz ağılın çevresindeki otlakta, gece ağılda. */
+  #tended(world, dt) {
+    const { position, grazeRange } = this.tether;
+    if (world.clock.isNight) return this.#moveCenter(position, dt);
+    if (!this.target || this.center.distanceTo(this.target) < 5) this.target = this.#nextPasture(world, position, grazeRange);
+    this.#moveCenter(this.target, dt);
+  }
+
+  #nextPasture(world, around = this.center, radius = DRIFT_RADIUS) {
     let best = null;
     let bestForage = -1;
     for (let i = 0; i < DRIFT_SAMPLES; i++) {
-      const point = world.randomPointNear(this.center, DRIFT_RADIUS);
+      const point = world.randomPointNear(around, radius);
       const forage = world.forageAt(point);
       if (forage > bestForage) {
         best = point;

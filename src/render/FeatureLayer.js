@@ -27,6 +27,7 @@ export class FeatureLayer {
     }
     inView(this.world.mineGrid, (mine) => this.#drawMine(ctx, camera, mine));
     inView(this.world.homeGrid, (home) => this.#drawHome(ctx, camera, home), 50);
+    for (const pen of this.world.pens) this.#drawPen(ctx, camera, pen);
     for (const group of this.world.social.groups.groups) this.#drawVillage(ctx, camera, group);
   }
 
@@ -60,6 +61,12 @@ export class FeatureLayer {
   /** Yuvanın ekrandaki yarıçapı (m); tıklayarak seçmek için de kullanılır. */
   static homeRadius(home, camera) {
     return Math.max(2 + home.shelterLevel * 1.5, camera.pixels(3 + home.shelterLevel * 1.5));
+  }
+
+  #drawPen(ctx, camera, pen) {
+    const { x, y } = pen.position;
+    DotPainter.ring(ctx, x, y, Math.max(pen.radius, camera.pixels(5)), COLORS.PEN, camera.pixels(1.5));
+    if (camera.zoom >= LABEL_ZOOM) this.#label(ctx, camera, `Ağıl · ${pen.herd.size}`, x, y - Math.max(pen.radius, camera.pixels(5)) - camera.pixels(6), COLORS.PEN);
   }
 
   #drawHome(ctx, camera, home) {

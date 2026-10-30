@@ -26,6 +26,7 @@ export class HuntingProvider extends FoodProvider {
   static huntAction(prey) {
     return new SequenceAction(`${prey.species.name} avına çıktı`, [
       new MoveToAction('Avına sessizce yaklaşıyor', () => (prey.alive ? prey.position : null), { arriveDistance: 30 }),
+      new CallbackAction('Saldırıya geçiyor', (_p, w) => prey.alert(w)), // sürü fark eder, uyuyorsa uyanır
       new MoveToAction(`${prey.species.name} kovalıyor`, () => (prey.alive ? prey.position : null), {
         arriveDistance: STRIKE_DISTANCE,
         run: true,

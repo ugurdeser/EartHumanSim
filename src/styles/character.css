@@ -1,0 +1,58 @@
+/* ---------- Karakter penceresi ---------- */
+
+.char-window {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 380px;
+  max-height: calc(100% - 24px);
+  display: flex;
+  flex-direction: column;
+  background: rgba(34, 38, 31, 0.96);
+  border: 1px solid #4a5540;
+  border-radius: 10px;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
+}
+
+.char-window.hidden {
+  display: none;
+}
+
+.char-window header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  background: #2f362a;
+  cursor: move;
+  user-select: none;
+}
+
+.char-window header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+}
+
+button.icon {
+  flex: 0 0 28px;
+  padding: 2px 0;
+}
+
+.char-window .activity {
+  padding: 6px 10px 2px;
+  color: #ffe14d;
+}
+
+.char-window .needs {
+  padding: 4px 10px 6px;
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 0 10px 6px;
+  border-bottom: 1px solid #3c4535;
+}

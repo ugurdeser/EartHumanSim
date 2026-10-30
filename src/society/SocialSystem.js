@@ -1,3 +1,5 @@
+import { Laws } from './laws/Laws.js';
+import { GroupChapter } from './GroupHistory.js';
 import { Turkish } from '../core/Turkish.js';
 import { REPRODUCTION } from '../config.js';
 import { LogType } from '../core/EventLog.js';
@@ -61,7 +63,13 @@ export class SocialSystem {
 
   /** Yetişkin, karşı cins ve yakın akraba olmayan iki kişi eş olabilir. */
   canPair(a, b) {
-    return a !== b && a.isAdult && b.isAdult && a.sex !== b.sex && !a.isCloseRelativeOf(b);
+    return a !== b && a.isAdult && b.isAdult && a.sex !== b.sex && !a.isCloseRelativeOf(b) && this.#lawsAllowMarriage(a, b);
+  }
+
+  /** Evlilik yasası topluluk dışından eşi yasaklamış olabilir. */
+  #lawsAllowMarriage(a, b) {
+    if (a.group === b.group) return true;
+    return ![a.group, b.group].some((group) => group?.constitution.is(Laws.MARRIAGE, 'within'));
   }
 
   /** Çocuk yalnızca evli çiftlerden olur. */
@@ -127,7 +135,10 @@ export class SocialSystem {
   #foundFamily(a, b) {
     const [husband, wife] = a.isFemale ? [b, a] : [a, b];
     const [keep, drop] = a.home.shelterLevel >= b.home.shelterLevel ? [a.home, b.home] : [b.home, a.home];
-    if (drop !== keep) drop.storage.transferTo(keep.storage);
+    if (drop !== keep) {
+      drop.storage.transferTo(keep.storage);
+      keep.adoptHoldings(drop);
+    }
 
     const family = this.families.found(husband, wife, keep);
     if (drop !== keep && drop.owners.size === 0) this.world.removeHome(drop);
@@ -184,6 +195,9 @@ export class SocialSystem {
       person.partner.partner = null;
       this.log.add(`💔 ${person.partner.name} eşini kaybetti`, LogType.LOVE);
     }
+    const role = person.group?.leader === person ? 'Lider ' : '';
+    person.group?.record(this.world, GroupChapter.MEMBERS, `✝ ${role}${person.name} öldü: ${person.causeOfDeath}`);
+    if (person.causeOfDeath?.includes('açlık')) person.group?.lawMaking.press(Laws.FOOD, `${person.name} açlıktan ölünce`, 3);
     this.groups.remove(person);
     person.home.removeOwner(person);
     this.families.prune();

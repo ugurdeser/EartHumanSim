@@ -23,7 +23,8 @@ export class AnimalNeeds {
 
     if (this.food <= 0 || this.water <= 0) {
       this.health = clamp01(this.health - (dt * frailty) / p.starvationTime);
-      return 'açlık / susuzluk';
+      if (this.water > 0) return 'açlık';
+      return this.food > 0 ? 'susuzluk' : 'açlık ve susuzluk';
     }
     const cold = p.comfortTemperature - feltTemperature;
     if (cold > 0) {

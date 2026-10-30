@@ -1,9 +1,8 @@
-import { FAMILY, FIRE, PLANTS, SIM, WORLD } from '../config.js';
-import { LogType } from '../core/EventLog.js';
+import { FIRE, PLANTS, SIM, WORLD } from '../config.js';
 import { clamp } from '../core/MathUtils.js';
+import { Scheduler } from '../core/Scheduler.js';
 import { SpatialGrid } from '../core/SpatialGrid.js';
 import { Vector2 } from '../core/Vector2.js';
-import { Kinship } from '../society/Kinship.js';
 import { SocialSystem } from '../society/SocialSystem.js';
 import { InventionService } from '../tech/InventionService.js';
 import { WeatherSystem } from '../weather/WeatherSystem.js';
@@ -11,13 +10,13 @@ import { ActiveRegion } from './ActiveRegion.js';
 import { BiomeMap } from './BiomeMap.js';
 import { ChunkGenerator } from './chunks/ChunkGenerator.js';
 import { ChunkManager } from './chunks/ChunkManager.js';
-import { Home } from './Home.js';
+import { Demography } from './Demography.js';
+import { Pasture } from './Pasture.js';
 import { RoadNetwork } from './RoadNetwork.js';
 
 const MAX_POND_RADIUS = 90;
 const MAX_HILLSIDE_RADIUS = 120;
 const MAX_PLANT_RADIUS = PLANTS.TREE.RADIUS[1];
-const MIN_SEASON_FORAGE = 0.15; // kışın bile kar altında biraz ot kalır
 
 /** Fiziksel dünya: arazi, su, madenler, yuvalar, yollar ve tüm canlılar. */
 export class World {
@@ -34,6 +33,7 @@ export class World {
     this.mines = [];
     this.hillsides = [];
     this.homes = [];
+    this.pens = [];
     this.people = [];
     this.deceased = [];
     this.animals = [];
@@ -53,9 +53,11 @@ export class World {
     });
     this.activeRegion = new ActiveRegion(this.chunks);
     this.activeTimer = 0;
-    this.coarseTime = false; // ileri sarılırken true: önemsiz türler seyrek güncellenir
+    this.scheduler = new Scheduler(); // uyuyan canlıları uyanma zamanına göre tutar
     this.systems = []; // periyodik servisler (ör. hayvan üretici): update(world, dt)
 
+    this.pasture = new Pasture(this);
+    this.demography = new Demography(this);
     this.social = new SocialSystem(this);
     this.invention = new InventionService(this);
     this.personFactory = null; // Game tarafından atanır
@@ -89,8 +91,47 @@ export class World {
   }
 
   removeHome(home) {
+    if (home.pen) this.removePen(home.pen);
     this.homes = this.homes.filter((h) => h !== home);
     this.homeGrid.remove(home);
+  }
+
+  addPen(pen) {
+    this.pens.push(pen);
+    pen.home.pen = pen;
+    return pen;
+  }
+
+  removePen(pen) {
+    pen.release(this);
+    this.pens = this.pens.filter((p) => p !== pen);
+    pen.home.pen = null;
+  }
+
+  /** Yakalanan yırtıcı artık tehlike değil. */
+  forgetPredator(animal) {
+    this.predators = this.predators.filter((a) => a !== animal);
+  }
+
+  /** Yabana dönen yırtıcı yeniden tehlike. */
+  rememberPredator(animal) {
+    if (animal.isDangerous && !this.predators.includes(animal)) this.predators.push(animal);
+  }
+
+  /** Ekilen bitkiyi bulunduğu parçaya koyar. */
+  addPlant(plant) {
+    const { x, y } = plant.position;
+    const chunk = this.chunks.get(this.chunks.coord(x), this.chunks.coord(y));
+    chunk[plant.species.layer].push(plant);
+    chunk.markChanged();
+    return plant;
+  }
+
+  /** Noktanın `spacing` kadar yakınında aynı katmandan yaşayan bitki yok mu? */
+  isPlantSpotFree(point, Species, spacing) {
+    const chunk = this.chunks.get(this.chunks.coord(point.x), this.chunks.coord(point.y));
+    const spacingSq = spacing * spacing;
+    return !chunk[Species.SPECIES.layer].some((p) => p.alive && p.position.distanceSqTo(point) < spacingSq);
   }
 
   addPerson(person) {
@@ -196,33 +237,13 @@ export class World {
     return this.hillsideGrid.findNearest(position, maxRadius);
   }
 
-  /**
-   * Otlayan hayvanlar için ot bolluğu (0..1): çayırlık × mevsim × parçadaki otun durumu
-   * (otlanıp seyrelen yer daha az doyurur); yamaçta kışın da ot bulunur.
-   */
+
   forageAt(position) {
-    const season = this.calendar.season;
-    const cover = this.chunks.peek(this.chunks.coord(position.x), this.chunks.coord(position.y))?.ecology?.grassCover ?? 1;
-    const meadow = Math.min(1, this.biomes.grassChance(position.x, position.y) * cover) * Math.max(MIN_SEASON_FORAGE, Math.min(1, season.growth));
-    const hillside = this.hillsideAt(position);
-    const open = meadow * this.weather.forageFactor;
-    return hillside ? Math.max(open, hillside.forage) : open;
+    return this.pasture.forageAt(position);
   }
 
-  /**
-   * Hayvan otladı: yakındaki ot öbeklerini `food` tokluk karşılığı kadar kısaltır.
-   * Ot kökünden yeniden büyür; çok otlanan yer seyrelir (forageAt düşer).
-   */
   graze(position, food) {
-    const chunk = this.chunks.peek(this.chunks.coord(position.x), this.chunks.coord(position.y));
-    if (!chunk?.ecology) return;
-    const { GRAZE_PER_FOOD, GRAZE_REACH, MIN_GROWTH } = PLANTS.GRASS;
-    let left = food * GRAZE_PER_FOOD;
-    const reachSq = GRAZE_REACH * GRAZE_REACH;
-    for (const grass of chunk.grass) {
-      if (left <= 0) break;
-      if (grass.alive && grass.position.distanceSqTo(position) <= reachSq) left -= grass.browse(left, MIN_GROWTH);
-    }
+    this.pasture.graze(position, food);
   }
 
   /** Bir noktanın bulunduğu parçayı "değişti" diye işaretler (görsel önbellek için). */
@@ -275,57 +296,25 @@ export class World {
   // ---------- Yaşam döngüsü ----------
 
   birth(mother, father) {
-    const child = this.personFactory.createChild(mother, father);
-    this.addPerson(child);
-    this.social.families.registerBirth(child, mother);
-    this.log.add(`👶 ${mother.name} ve ${father?.name ?? '?'} bir çocuk sahibi oldu: ${child.fullName}`, LogType.LIFE, [mother, father, child]);
-    const gifts = child.traits.sharedParentalStrengths(mother.traits, father?.traits);
-    if (gifts.length) this.log.personal([child], `🧬 Anne ve babasının ortak özelliğini aldı: ${gifts.join(', ')}`, LogType.LIFE);
-    this.#notifyRelatives(child, () => `👶 ${Kinship.siblingWord(child)} ${child.name} doğdu`, [...child.siblings]);
-    return child;
+    return this.demography.birth(mother, father);
   }
 
-  /** Yetişkin olan kişi ailesinin yakınında kendi yuvasını kurar; artık kendi ailesini kurabilir. */
   comeOfAge(person) {
-    this.social.families.leave(person);
-    this.settleAlone(person);
-    this.log.add(`🧑 ${person.fullName} ${person.age} yaşına girdi ve kendi yuvasını kurdu`, LogType.LIFE, [person]);
+    this.demography.comeOfAge(person);
   }
 
-  /** Kişi eski yuvasının yakınında kendine yeni bir yuva kurar. */
   settleAlone(person) {
-    const spot = this.spotNear(person.group?.center ?? person.home.position);
-    person.moveHome(this.addHome(new Home(spot.x, spot.y)));
+    this.demography.settleAlone(person);
   }
 
-  /** Bir noktanın yakınında yuva kurulabilecek kuru bir yer. */
   spotNear(origin) {
-    const [min, max] = FAMILY.OWN_HOME_DISTANCE;
-    let spot;
-    do {
-      spot = origin.clone().add(Vector2.fromAngle(this.rng.angle(), this.rng.range(min, max)));
-      this.clampPosition(spot);
-    } while (this.isWater(spot.x, spot.y, 5));
-    return spot;
+    return this.demography.spotNear(origin);
   }
 
   killPerson(person, cause) {
-    if (!person.alive) return;
-    person.die(cause, this.now);
-    this.people = this.people.filter((p) => p !== person);
-    this.deceased.push(person);
-    this.social.handleDeath(person);
-    if (person.home.owners.size === 0) this.removeHome(person.home);
-    this.log.add(`✝ ${person.fullName} ${person.age} yaşında öldü (${cause})`, LogType.DANGER, [person]);
-    this.#notifyRelatives(person, (relative) => `✝ ${Kinship.describe(person, relative)} ${person.name} öldü (${cause})`);
+    this.demography.killPerson(person, cause);
   }
 
-  /** Kişinin yaşayan yakınlarının hikâyesine kişisel not düşer. */
-  #notifyRelatives(person, messageFor, relatives = Kinship.closeRelatives(person)) {
-    for (const relative of relatives) {
-      if (relative.alive) this.log.personal([relative], messageFor(relative), LogType.LIFE);
-    }
-  }
 
   // ---------- Döngü ----------
 
@@ -341,10 +330,13 @@ export class World {
     for (const system of this.systems) system.update(this, dt);
     for (const home of this.homes) home.update(dt, this.weather.precipitation);
     this.social.update();
+    this.scheduler.popDue(this.now, (animal) => animal.wake(this));
     let anyDead = false;
     for (const animal of this.animals) {
       if (!animal.alive) anyDead = true;
+      else if (animal.sleeping) continue;
       else if (this.activeRegion.isActive(animal.position)) animal.update(this, dt);
+      else animal.freeze(this);
     }
     if (anyDead) {
       this.animals = this.animals.filter((a) => a.alive);

@@ -32,7 +32,8 @@ export class Wolf extends HerdAnimal {
     color: COLORS.WOLF,
     dangerous: true,
     huntable: false,
-    domesticable: false,
+    // yalnızca yavrusu, deneyimli bir hayvancının elinde, binde bir: uzun soluklu bir iş
+    domestication: Object.freeze({ captureChance: W.CAPTURE_CHANCE, tameSessions: W.TAME_SESSIONS, minSkill: W.TAME_MIN_SKILL, youngOnly: true }),
     genes: GENES,
     movement: Object.freeze({ walk: W.ROAM_SPEED, run: W.CHASE_SPEED }),
     life: Object.freeze({ adultAge: W.ADULT_AGE, oldAge: W.OLD_AGE, oldAgeRisk: W.OLD_AGE_RISK, wildAge: W.WILD_AGE }),
@@ -54,6 +55,7 @@ export class Wolf extends HerdAnimal {
     }),
     shelterSeasons: Object.freeze([]),
     maxHerd: W.MAX_PACK,
+    maxSleep: W.MAX_SLEEP,
 
     createProducts: () => [
       new CarcassProduct(Items.MEAT, { amount: (a) => W.MEAT * a.genome.scale('size', 0.6, 1.4) * (a.isYoung ? 0.4 : 1) }),

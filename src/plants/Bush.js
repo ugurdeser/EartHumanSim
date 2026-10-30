@@ -4,10 +4,11 @@ import { plantGenes, speciesProfile } from './PlantGenes.js';
 const GENES = plantGenes({ id: 'yield', name: 'Yemiş verimi' });
 
 /** Yemiş çalısı profili: ortak bitki profiline verdiği yemiş bilgilerini ekler. */
-export const bushProfile = (config, { name, food, fruitColor, seedSeasons, germination }) =>
+export const bushProfile = (config, { name, food, seed, fruitColor, seedSeasons, germination }) =>
   Object.freeze({
     ...speciesProfile(config, { name, layer: 'bushes', genes: GENES, seedSeasons, germination }),
     food,
+    seed,
     fruitColor,
     capacity: config.CAPACITY,
     regrowTime: config.REGROW,

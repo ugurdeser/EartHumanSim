@@ -25,6 +25,7 @@ export class Plant extends FoodSource {
     this.ageYears = ageYears;
     this.dead = false;
     this.radius = 0;
+    this.mortalityScale = 1; // insanın baktığı bitkide 1'in altında
   }
 
   /** Haritayla birlikte üretilen bitki: rastgele genler, çoğunlukla yetişkin. */
@@ -41,6 +42,20 @@ export class Plant extends FoodSource {
     const plant = new this(x, y, { genome: Genome.inherit(mother.genome, father?.genome, rng), growth: 0, ...this.inheritedFrom(mother) });
     plant.refresh();
     return plant;
+  }
+
+  /** İnsanın ektiği tohumdan çıkan fide; bakımı (`care` 0..1) ölümünü azaltır. */
+  static sow(x, y, rng, care) {
+    const plant = new this(x, y, { genome: Genome.random(this.SPECIES.genes, rng), growth: 0, ...this.sownOptions() });
+    plant.mortalityScale = 1 - care;
+    plant.touched = true;
+    plant.refresh();
+    return plant;
+  }
+
+  /** Ekilen tohumun taşıdığı özellikler (ör. meyve çekirdeğinden meyveli ağaç). */
+  static sownOptions() {
+    return {};
   }
 
   /** Genden bağımsız, doğrudan anneden geçen özellikler (ör. meyveli ağaç). */
@@ -85,7 +100,7 @@ export class Plant extends FoodSource {
   /** Yıllık ölüm olasılığı: fide kırılgandır, ömrünü aşan bitki hızla kurur. */
   get mortality() {
     const { seedling, adult, old } = this.species.mortality;
-    return (this.isMature ? adult : seedling) + (this.ageYears > this.lifespan ? old : 0);
+    return ((this.isMature ? adult : seedling) + (this.ageYears > this.lifespan ? old : 0)) * this.mortalityScale;
   }
 
   /** Yetişkinken verdiği yiyecek porsiyonu (yoksa 0). */

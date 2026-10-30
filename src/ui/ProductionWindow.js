@@ -6,16 +6,16 @@ const MODES = Object.freeze({
   materials: {
     label: '🪵 Hammaddeler',
     title: 'Hammaddeler: neye dönüşüyor?',
-    sections: [
-      ['Malzemeler', [NodeKind.MATERIAL]],
-      ['Yiyecekler', [NodeKind.FOOD]],
-      ['Doğa', [NodeKind.NATURE]],
+    sections: (graph) => [
+      ['Malzemeler', graph.ofKind(NodeKind.MATERIAL)],
+      ['Yiyecekler', graph.ofKind(NodeKind.FOOD)],
+      ['Doğa', graph.ofKind(NodeKind.NATURE)],
     ],
   },
   technology: {
     label: '💡 Teknoloji',
     title: 'Teknoloji: ne gerekiyor, neyi açıyor?',
-    sections: [['Teknolojiler', [NodeKind.TECHNOLOGY]]],
+    sections: (graph) => graph.technologyGroups(),
   },
 });
 
@@ -83,12 +83,16 @@ export class ProductionWindow {
     this.root.classList.remove('hidden');
     this.#markButtons();
 
-    const sections = mode.sections.map(([name, kinds]) => [name, this.graph.ofKind(...kinds)]);
+    const sections = mode.sections(this.graph);
     this.list.replaceChildren(
-      ...sections.flatMap(([name, nodes]) => [
-        el('h4', { text: name }),
-        ...nodes.map((node) => el('button', { 'data-pick': node.id, text: `${node.icon} ${node.name}`, onClick: () => this.#pick(node.id) })),
-      ]),
+      ...sections.map(([name, nodes]) =>
+        el(
+          'details',
+          { open: '' },
+          el('summary', {}, `${name} (${nodes.length})`),
+          nodes.map((node) => el('button', { 'data-pick': node.id, text: `${node.icon} ${node.name}`, onClick: () => this.#pick(node.id) })),
+        ),
+      ),
     );
     this.#pick(sections[0][1][0].id);
   }

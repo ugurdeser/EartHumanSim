@@ -1,0 +1,57 @@
+/* ---------- Geliştirici paneli ---------- */
+
+.char-window.dev-panel {
+  top: 48px;
+  left: 12px;
+  right: auto;
+  width: 340px;
+}
+
+.dev-section summary {
+  cursor: pointer;
+  font-weight: 600;
+  padding: 2px 0;
+}
+
+.dev-section h4 {
+  margin: 10px 0 4px;
+  color: #9aa08f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dev-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+}
+
+.dev-buttons button {
+  padding: 4px 2px;
+  font-size: 12px;
+}
+
+.dev-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.dev-row input[type='number'],
+.dev-row select {
+  width: 140px;
+  padding: 2px 4px;
+  background: #2a3025;
+  color: inherit;
+  border: 1px solid #45503c;
+  border-radius: 4px;
+}
+
+.dev-row input[type='range'] {
+  width: 140px;
+}

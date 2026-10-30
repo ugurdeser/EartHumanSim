@@ -39,12 +39,14 @@ export class AgentLayer {
 
   #drawAnimals(ctx, camera, bounds) {
     const groups = new Map(); // tür -> görünür hayvanlar
+    const now = this.world.now;
     for (const animal of this.world.animals) {
       if (!animal.alive || !AgentLayer.#inside(animal.position, bounds, 5)) continue;
       const species = animal.species;
       if (!AgentLayer.isVisible(animal, camera)) continue;
       if (!groups.has(species)) groups.set(species, []);
-      groups.get(species).push(animal);
+      // uyurken süzülen hayvan (ör. balık) yolunun o anki noktasında çizilir
+      groups.get(species).push(animal.glide ? { position: animal.displayPosition(now), isYoung: animal.isYoung } : animal);
     }
     for (const [species, animals] of groups) {
       const radius = AgentLayer.#animalRadius(camera, species.id);
@@ -53,6 +55,10 @@ export class AgentLayer {
         ctx.strokeStyle = 'rgba(80,80,80,0.6)';
         ctx.lineWidth = camera.pixels(0.8);
         ctx.stroke();
+      }
+      // evcil ve tutsak hayvanlar ince halkayla ayırt edilir
+      for (const animal of animals) {
+        if (animal.domestication) DotPainter.ring(ctx, animal.position.x, animal.position.y, radius * 1.5, animal.isTamed ? '#2f7d4f' : '#c8862a', camera.pixels(1));
       }
       if (species.id === 'wolf') {
         for (const wolf of animals) {

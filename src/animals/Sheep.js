@@ -32,7 +32,7 @@ export class Sheep extends HerdAnimal {
     color: COLORS.SHEEP,
     dangerous: false,
     huntable: true,
-    domesticable: true,
+    domestication: Object.freeze({ captureChance: S.CAPTURE_CHANCE, tameSessions: S.TAME_SESSIONS }),
     genes: GENES,
     movement: Object.freeze({ walk: S.WALK_SPEED, run: S.FLEE_SPEED }),
     life: Object.freeze({ adultAge: S.ADULT_AGE, oldAge: S.OLD_AGE, oldAgeRisk: S.OLD_AGE_RISK, wildAge: S.WILD_AGE }),
@@ -54,6 +54,7 @@ export class Sheep extends HerdAnimal {
     }),
     shelterSeasons: Object.freeze([Season.WINTER]),
     maxHerd: S.MAX_HERD,
+    maxSleep: S.MAX_SLEEP,
 
     createProducts: () => [
       new WoolCoat(Items.WOOL, {

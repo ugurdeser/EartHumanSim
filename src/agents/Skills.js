@@ -8,7 +8,12 @@ export const SKILL_DEFINITIONS = Object.freeze([
   { id: 'woodcutting', name: 'Odunculuk' },
   { id: 'fishing', name: 'Balıkçılık' },
   { id: 'hunting', name: 'Avcılık' },
+  { id: 'trapping', name: 'Hayvan yakalama' },
+  { id: 'fencing', name: 'Ağıl yapımı' },
+  { id: 'taming', name: 'Hayvan alıştırma' },
+  { id: 'butchery', name: 'Kesim' }, // acemi etin ve postun bir kısmını ziyan eder
   { id: 'husbandry', name: 'Hayvancılık' }, // süt sağma, yün kırkma
+  { id: 'farming', name: 'Tohum ekimi' }, // tohum toplama ve ekme
   { id: 'leadership', name: 'Liderlik' },
 ]);
 

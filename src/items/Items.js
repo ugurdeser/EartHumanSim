@@ -1,5 +1,5 @@
 import { HOUR } from '../config.js';
-import { BagType, ClothingSlot, ClothingType, FoodType, MaterialType, ToolType } from './ItemType.js';
+import { BagType, ClothingSlot, ClothingType, FoodType, MaterialType, SeedType, ToolType } from './ItemType.js';
 
 const WOOL_LIFE = 360; // giysi ömrü: giyildiği gün sayısı
 const LEATHER_LIFE = 720;
@@ -28,8 +28,8 @@ export const Items = Object.freeze({
   MILK: new FoodType('milk', 'Süt', { weight: 0.5, nutrition: 0.25, icon: '🥛' }),
 
   // Malzemeler
-  BRANCH: new MaterialType('branch', 'Dal', { weight: 0.5, fuelSeconds: 1 * HOUR, icon: '🌿' }),
-  WOOD: new MaterialType('wood', 'Odun', { weight: 2, fuelSeconds: 4 * HOUR, icon: '🪵' }),
+  BRANCH: new MaterialType('branch', 'Dal', { weight: 0.5, fuelSeconds: 2 * HOUR, icon: '🌿' }),
+  WOOD: new MaterialType('wood', 'Odun', { weight: 2, fuelSeconds: 8 * HOUR, icon: '🪵' }),
   STONE: new MaterialType('stone', 'Taş', { weight: 3, icon: '🪨' }),
   FLINT: new MaterialType('flint', 'Çakmaktaşı', { weight: 0.5, icon: '◆' }),
   WOOL: new MaterialType('wool', 'Yün', { weight: 0.4, icon: '🧶' }),
@@ -40,6 +40,13 @@ export const Items = Object.freeze({
   LEATHER: new MaterialType('leather', 'İşlenmiş deri', { weight: 1, icon: '🟫' }),
   THONG: new MaterialType('thong', 'Deri sırım', { weight: 0.05, icon: '➰' }),
   WATER: new MaterialType('water', 'Su', { weight: 0.5, icon: '💧' }),
+
+  // Tohumlar
+  BLUEBERRY_SEED: new SeedType('blueberry_seed', 'Yaban mersini tohumu', { weight: 0.02, icon: '🌱' }),
+  STRAWBERRY_SEED: new SeedType('strawberry_seed', 'Yaban çileği tohumu', { weight: 0.02, icon: '🌱' }),
+  BLACKBERRY_SEED: new SeedType('blackberry_seed', 'Böğürtlen tohumu', { weight: 0.02, icon: '🌱' }),
+  RASPBERRY_SEED: new SeedType('raspberry_seed', 'Ahududu tohumu', { weight: 0.02, icon: '🌱' }),
+  FRUIT_SEED: new SeedType('fruit_seed', 'Meyve çekirdeği', { weight: 0.05, icon: '🌰' }),
 
   // Aletler ve silahlar
   STONE_AXE: new ToolType('stone_axe', 'Taş balta', { weight: 2, durability: 40, capabilities: [Capability.CHOP], icon: '🪓' }),
@@ -80,3 +87,4 @@ export const Items = Object.freeze({
 
 export const FOOD_TYPES = Object.freeze(Object.values(Items).filter((t) => t.isFood));
 export const FUEL_TYPES = Object.freeze(Object.values(Items).filter((t) => t.isFuel));
+export const SEED_TYPES = Object.freeze(Object.values(Items).filter((t) => t.isSeed));

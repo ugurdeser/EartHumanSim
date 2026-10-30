@@ -24,7 +24,7 @@ export class Fish extends HerdAnimal {
     color: COLORS.FISH,
     dangerous: false,
     huntable: false,
-    domesticable: false,
+    domestication: null,
     genes: GENES,
     movement: Object.freeze({ walk: F.SWIM_SPEED, run: F.SWIM_SPEED }),
     life: Object.freeze({ adultAge: F.ADULT_AGE, oldAge: F.OLD_AGE, oldAgeRisk: F.OLD_AGE_RISK, wildAge: F.WILD_AGE }),
@@ -46,7 +46,8 @@ export class Fish extends HerdAnimal {
     }),
     shelterSeasons: Object.freeze([]),
     thinkInterval: F.THINK_INTERVAL, // tehdit algılamaz; seyrek karar vermesi yeter
-    coarseInterval: F.COARSE_INTERVAL,
+    maxSleep: F.MAX_SLEEP,
+    glides: true, // tehlike algılamaz: yüzüşü uyurken hesaplanır, çizimde kayarak görünür
     maxHerd: 1, // sürü boyunu suyun büyüklüğü belirler (createHerd)
 
     createProducts: () => [new CarcassProduct(Items.FISH, { amount: (a) => Math.max(1, F.MEAT * a.genome.scale('size', 0.6, 1.4) * (a.isYoung ? 0.4 : 1)) })],
