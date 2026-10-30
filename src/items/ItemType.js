@@ -1,0 +1,73 @@
+/** Bir eşya türünün değişmez tanımı (soyut). */
+export class ItemType {
+  constructor(id, name, { weight, icon = '•' }) {
+    if (new.target === ItemType) throw new Error('ItemType soyut bir sınıftır');
+    this.id = id;
+    this.name = name;
+    this.weight = weight;
+    this.icon = icon;
+  }
+
+  get isFood() {
+    return false;
+  }
+
+  get isTool() {
+    return false;
+  }
+
+  get isFuel() {
+    return false;
+  }
+}
+
+export class FoodType extends ItemType {
+  /** cookedNutrition null ise pişirilmez (yemiş, meyve). */
+  constructor(id, name, { nutrition, cookedNutrition = null, ...rest }) {
+    super(id, name, rest);
+    this.nutrition = nutrition;
+    this.cookedNutrition = cookedNutrition;
+  }
+
+  get isFood() {
+    return true;
+  }
+
+  get cookable() {
+    return this.cookedNutrition !== null;
+  }
+
+  nutritionFor(cooked) {
+    return cooked && this.cookable ? this.cookedNutrition : this.nutrition;
+  }
+}
+
+export class MaterialType extends ItemType {
+  /** fuelSeconds > 0 ise ateşe yakıt olarak atılabilir. */
+  constructor(id, name, { fuelSeconds = 0, ...rest }) {
+    super(id, name, rest);
+    this.fuelSeconds = fuelSeconds;
+  }
+
+  get isFuel() {
+    return this.fuelSeconds > 0;
+  }
+}
+
+/** Aletler: yetenekleri (capability) sayesinde yeni eylemlerin önünü açar. */
+export class ToolType extends ItemType {
+  constructor(id, name, { durability, capabilities, power = 0, ...rest }) {
+    super(id, name, rest);
+    this.durability = durability;
+    this.capabilities = new Set(capabilities);
+    this.power = power;
+  }
+
+  get isTool() {
+    return true;
+  }
+
+  can(capability) {
+    return this.capabilities.has(capability);
+  }
+}
