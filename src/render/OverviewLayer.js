@@ -1,4 +1,5 @@
 import { COLORS } from '../config.js';
+import { smoothstep } from '../core/MathUtils.js';
 import { Surface } from '../world/Terrain.js';
 
 const WIDTH = 2016; // 125 m/piksel
@@ -15,7 +16,8 @@ const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
 const covered = (chance, cover) => 1 - Math.exp(-chance * cover); // noktalar üst üste de binebilir
 
 /**
- * Tüm haritanın uzaktan görünümü: bitki yoğunluklarından renklenmiş tek bir resim.
+ * Yeryüzünün zemini: bitki yoğunluklarından renklenmiş tek bir resim.
+ * Yakın katmanlar da bu resmin üstüne çizilir; uzaktan bakış yakının küçülmüş hâlidir.
  * Yoğunluklar bir kez hesaplanır; mevsim değişince yalnızca yeniden renklenir.
  */
 export class OverviewLayer {
@@ -33,6 +35,7 @@ export class OverviewLayer {
     this.tree = new Float32Array(n);
     this.bush = new Float32Array(n);
     this.grass = new Float32Array(n);
+    this.fertility = new Float32Array(n);
     this.surface = new Uint8Array(n);
     const cell = this.world.width / WIDTH;
     const { biomes, terrain } = this.world;
@@ -46,6 +49,7 @@ export class OverviewLayer {
         this.tree[i] = biomes.treeChance(x, y);
         this.bush[i] = biomes.bushChance(x, y);
         this.grass[i] = biomes.grassChance(x, y);
+        this.fertility[i] = biomes.fertility(x, y);
       }
     }
   }
@@ -61,7 +65,11 @@ export class OverviewLayer {
         image.data.set([...(this.surface[i] === Surface.SEA ? sea : ice), 255], i * 4);
         continue;
       }
-      let c = mix(palette.ground, palette.grass, covered(this.grass[i], GRASS_COVER));
+      // verimli toprak otla, sık ağaçlık orman tabanıyla örtülüdür
+      const meadow = smoothstep(0.25, 0.9, this.fertility[i]) * (0.6 + 0.4 * Math.min(1, this.grass[i] / 0.6));
+      let c = mix(palette.ground, palette.meadow, meadow);
+      c = mix(c, palette.forest, smoothstep(0.08, 0.7, this.tree[i]));
+      c = mix(c, palette.grass, covered(this.grass[i], GRASS_COVER));
       c = mix(c, palette.bush, covered(this.bush[i], BUSH_COVER));
       c = mix(c, palette.tree, covered(this.tree[i], TREE_COVER));
       image.data.set([c[0], c[1], c[2], 255], i * 4);
@@ -70,9 +78,9 @@ export class OverviewLayer {
 
     const scale = WIDTH / this.world.width;
     for (const pond of this.world.ponds) {
-      ctx.fillStyle = pond.contaminated ? COLORS.WATER_DIRTY : COLORS.WATER;
+      ctx.fillStyle = COLORS.WATER;
       ctx.beginPath();
-      ctx.arc(pond.position.x * scale, pond.position.y * scale, Math.max(0.8, pond.radius * scale), 0, Math.PI * 2);
+      pond.trace(ctx, scale, 0.8);
       ctx.fill();
     }
     this.pixels = ctx.getImageData(0, 0, WIDTH, HEIGHT).data; // küre görünümü buradan örnekler (sular abartılı, seçilsin diye)
@@ -90,6 +98,7 @@ export class OverviewLayer {
   draw(ctx, camera) {
     this.refresh();
     ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(this.canvas, 0, 0, this.world.width, this.world.height);
   }
 

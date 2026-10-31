@@ -47,7 +47,7 @@ export class AnimalSpawner {
 
   #addFish(pond) {
     const world = this.world;
-    const p = world.randomPointNear(pond.position, pond.radius * 0.8);
+    const p = world.randomPointNear(pond.position, pond.innerRadius * 0.8);
     const fish = Fish.createWild(p.x, p.y, world.rng);
     pond.school.add(fish);
     world.addAnimal(fish);

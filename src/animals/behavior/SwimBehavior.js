@@ -10,6 +10,6 @@ export class SwimBehavior extends IdleBehavior {
   }
 
   radiusFor(animal) {
-    return animal.reach(animal.pond.radius * POND_REACH);
+    return animal.reach(animal.pond.innerRadius * POND_REACH);
   }
 }

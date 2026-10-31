@@ -53,7 +53,6 @@ export class Wolf extends HerdAnimal {
       litterSize: W.LITTER_SIZE,
       mateRadius: PACK_RANGE * 2,
     }),
-    shelterSeasons: Object.freeze([]),
     maxHerd: W.MAX_PACK,
     maxSleep: W.MAX_SLEEP,
 

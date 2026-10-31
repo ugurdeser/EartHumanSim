@@ -10,15 +10,13 @@ export class Pasture {
 
   /**
    * Otlayan hayvanlar için ot bolluğu (0..1): çayırlık × mevsim × parçadaki otun durumu
-   * (otlanıp seyrelen yer daha az doyurur); yamaçta kışın da ot bulunur.
+   * (otlanıp seyrelen yer daha az doyurur).
    */
   forageAt(position) {
     const season = this.world.calendar.season;
     const cover = this.world.chunks.peek(this.world.chunks.coordX(position.x), this.world.chunks.coordY(position.y))?.ecology?.grassCover ?? 1;
     const meadow = Math.min(1, this.world.biomes.grassChance(position.x, position.y) * cover) * Math.max(MIN_SEASON_FORAGE, Math.min(1, season.growth));
-    const hillside = this.world.hillsideAt(position);
-    const open = meadow * this.world.weather.forageFactor;
-    return hillside ? Math.max(open, hillside.forage) : open;
+    return meadow * this.world.weather.forageFactor;
   }
 
   /**

@@ -76,11 +76,9 @@ export const PLANTS = Object.freeze({
 export const FEATURES = Object.freeze({
   // km² başına adet
   POND_DENSITY: 0.4,
-  DIRTY_POND_RATIO: 0.25,
   STONE_MINE_DENSITY: 0.25,
   FLINT_MINE_DENSITY: 0.1,
   CLAY_MINE_DENSITY: 0.2,
-  HILLSIDE_DENSITY: 0.3, // yamaç: hayvanların kışın sığındığı korunaklı yer
   RIVER_RADIUS: [7, 15], // m: kaynaktan ağza doğru genişler
   RIVER_WAYPOINT: [500, 1100], // m: nehir başlangıç bölgesine bu kadar yaklaşır
   RIVER_MEANDER: 450, // m: kıvrım uzunluğu

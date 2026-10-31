@@ -6,8 +6,10 @@ import { ChunkLayer } from './ChunkLayer.js';
 import { CloudField } from './CloudField.js';
 import { FeatureLayer } from './FeatureLayer.js';
 import { GlobeLayer } from './GlobeLayer.js';
+import { Hillshade } from './Hillshade.js';
 import { OverviewLayer } from './OverviewLayer.js';
 import { PlantLayer } from './PlantLayer.js';
+import { ReliefLayer } from './ReliefLayer.js';
 import { SeaLayer } from './SeaLayer.js';
 import { SpaceLayer } from './SpaceLayer.js';
 import { SnowLayer } from './SnowLayer.js';
@@ -21,7 +23,7 @@ const CELL_ROWS = 18;
 const HIGH_LATITUDE = 0.75; // rad: bundan yukarıda boylamlar ara resme sığmaz, taban küre görünür
 
 /**
- * Katmanları sırayla çizer: uzak görünüm → parça resimleri → tek tek bitkiler →
+ * Katmanları sırayla çizer: uzak görünüm → dağ gölgeleri → parça resimleri → tek tek bitkiler →
  * kar → deniz → göl/maden/yuva/yol → canlılar → bulutlar → hava → gece. Her katman kendi zoom aralığını bilir.
  * Gezegen her yakınlıkta küredir: uzaktan küre resmi, orta yakınlıkta katmanlar ara resme çizilip
  * küreye bükülür, eğriliğin görünmediği yakınlıkta doğrudan çizilir.
@@ -36,10 +38,12 @@ export class Renderer {
     this.sceneCamera = new Camera(world.width, world.height);
     const overview = new OverviewLayer(world);
     const clouds = new CloudField();
-    this.globe = new GlobeLayer(world, overview, clouds);
+    const hillshade = new Hillshade(world);
+    this.globe = new GlobeLayer(world, overview, clouds, hillshade);
     this.space = new SpaceLayer(world);
     this.layers = [
       overview,
+      new ReliefLayer(world, hillshade),
       new ChunkLayer(world),
       new PlantLayer(world),
       new SnowLayer(world),

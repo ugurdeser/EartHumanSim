@@ -57,7 +57,7 @@ export const ANIMALS = Object.freeze({
     STARVATION_TIME: 4 * DAY,
     FREEZING_TIME: 3 * DAY,
     HEAL_TIME: 5 * DAY,
-    COMFORT_TEMPERATURE: 0, // yün ve yamaç bunun altını telafi eder
+    COMFORT_TEMPERATURE: 0, // yün bunun altını telafi eder
     GRAZE_TIME: 3 * HOUR, // en iyi otlakta açken doyma süresi
     // Üreme: sonbaharda çiftleşir, ~5 ay gebelik → ilkbaharda kuzular
     CONCEPTION_CHANCE: 0.03, // çiftleşme mevsiminde günlük

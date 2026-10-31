@@ -1,6 +1,6 @@
 import { DAY, FIRE, PLANET, PLANTS, SIM, WORLD } from '../config.js';
 import { clamp } from '../core/MathUtils.js';
-import { latitudeOf, wrapDelta, wrapX } from '../core/Planet.js';
+import { latitudeOf, wrapX } from '../core/Planet.js';
 import { Scheduler } from '../core/Scheduler.js';
 import { SpatialGrid } from '../core/SpatialGrid.js';
 import { Vector2 } from '../core/Vector2.js';
@@ -16,8 +16,7 @@ import { Pasture } from './Pasture.js';
 import { RoadNetwork } from './RoadNetwork.js';
 import { Terrain } from './Terrain.js';
 
-const MAX_POND_RADIUS = 90;
-const MAX_HILLSIDE_RADIUS = 120;
+const MAX_POND_RADIUS = 131; // en büyük gölet, en uzun kıyısıyla
 const MAX_PLANT_RADIUS = PLANTS.TREE.RADIUS[1];
 
 /** Fiziksel dünya: arazi, su, madenler, yuvalar, yollar ve tüm canlılar. */
@@ -36,7 +35,6 @@ export class World {
     this.biomes = new BiomeMap(rng, this.start);
     this.ponds = [];
     this.mines = [];
-    this.hillsides = [];
     this.homes = [];
     this.pens = [];
     this.people = [];
@@ -46,7 +44,6 @@ export class World {
 
     this.pondGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
     this.mineGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
-    this.hillsideGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
     this.homeGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
     this.roads = new RoadNetwork(this.width);
 
@@ -88,11 +85,6 @@ export class World {
   addMine(mine) {
     this.mines.push(mine);
     this.mineGrid.insert(mine);
-  }
-
-  addHillside(hillside) {
-    this.hillsides.push(hillside);
-    this.hillsideGrid.insert(hillside);
   }
 
   addHome(home) {
@@ -186,9 +178,10 @@ export class World {
   isWater(x, y, margin = 0) {
     if (!this.isPassable(x, y)) return true;
     const reach = MAX_POND_RADIUS + margin;
+    const point = { x, y };
     let water = false;
     this.pondGrid.forEachInRect(x - reach, y - reach, x + reach, y + reach, (pond) => {
-      if (!water && Math.hypot(wrapDelta(pond.position.x - x), pond.position.y - y) <= pond.radius + margin) water = true;
+      if (!water && pond.contains(point, margin)) water = true;
     });
     return water;
   }
@@ -197,11 +190,11 @@ export class World {
     return this.pondGrid.queryRadius(position, radius + MAX_POND_RADIUS);
   }
 
-  findNearestPond(position, { allowContaminated = false, withFish = false, maxRadius = 5000 } = {}) {
+  findNearestPond(position, { withFish = false, maxRadius = 5000 } = {}) {
     return this.pondGrid.findNearest(
       position,
       maxRadius,
-      (p) => (allowContaminated || !p.contaminated) && (!withFish || p.hasFish),
+      (p) => !withFish || p.hasFish,
       (p) => Math.max(0, position.distanceTo(p.position) - p.radius),
     );
   }
@@ -239,26 +232,6 @@ export class World {
     this.chunks.forEachInRect(point.x - reach, point.y - reach, point.x + reach, point.y + reach, scan, { generate: false });
     return best;
   }
-
-  /** Noktanın içinde kaldığı yamaç (yoksa null). */
-  hillsideAt(position) {
-    let found = null;
-    this.hillsideGrid.forEachInRect(
-      position.x - MAX_HILLSIDE_RADIUS,
-      position.y - MAX_HILLSIDE_RADIUS,
-      position.x + MAX_HILLSIDE_RADIUS,
-      position.y + MAX_HILLSIDE_RADIUS,
-      (h) => {
-        if (!found && h.contains(position)) found = h;
-      },
-    );
-    return found;
-  }
-
-  findNearestHillside(position, maxRadius) {
-    return this.hillsideGrid.findNearest(position, maxRadius);
-  }
-
 
   forageAt(position) {
     return this.pasture.forageAt(position);

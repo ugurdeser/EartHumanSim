@@ -3,7 +3,6 @@ export const COLORS = Object.freeze({
   WATER: '#3a8fd6',
   SEA: '#1f5f9e',
   ICE: '#e6eff5',
-  WATER_DIRTY: '#6f6a2e',
   HOME: '#7a5230',
   FIRE: '#ff7a1a',
   ROAD: '#8f8a80',
@@ -17,7 +16,6 @@ export const COLORS = Object.freeze({
   PEN: '#8a6a3c',
   SHEEP: '#fbfbf6',
   FISH: '#ff9f43',
-  HILLSIDE: 'rgba(122, 98, 70, 0.35)',
   SELECTION: '#ffe14d',
 });
 

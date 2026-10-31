@@ -52,7 +52,6 @@ export class Sheep extends HerdAnimal {
       litterSize: S.LITTER_SIZE,
       mateRadius: GRAZE_RADIUS * 4,
     }),
-    shelterSeasons: Object.freeze([Season.WINTER]),
     maxHerd: S.MAX_HERD,
     maxSleep: S.MAX_SLEEP,
 

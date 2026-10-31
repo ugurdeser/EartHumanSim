@@ -24,8 +24,6 @@ export class PlantLayer {
       trees.push(...chunk.standingTrees);
     });
 
-    ctx.fillStyle = palette.ground;
-    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
     const minRadius = camera.pixels(MIN_DOT_PX);
     const radiusOf = (p) => Math.max(p.radius, minRadius);
     DotPainter.batch(ctx, grass, palette.grass, radiusOf);

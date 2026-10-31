@@ -60,7 +60,6 @@ export class Person extends Agent {
     this.family = null; // içinde yaşadığı hane (Family)
     this.group = null;
     this.grievances = [];
-    this.learnedDirtyWater = false; // kirli sudan hastalanınca öğrenir, bir daha içmez
     this.status = 0.1;
     this.lastRanAt = -Infinity;
     this.lastCaredAt = -Infinity; // bir büyüğün en son ilgilendiği an

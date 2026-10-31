@@ -5,25 +5,20 @@ import { MoveToAction } from '../../actions/MoveToAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
 
-const DIRTY_WATER_DAMAGE = 0.2;
 const JAR_SIPS = 4; // dolu testinin kaç içimlik suyu var
 
-/** Su içmek: testiden, gölet ya da nehirden; kirli su hasta eder. */
+/** Su içmek: testiden, gölet ya da nehirden. */
 export class DrinkPlanner {
   static drink(person, world) {
     if (person.inventory.has(Items.WATER)) return DrinkPlanner.sip();
-    const allowDirty = !person.drives.get('disgust').avoidsDirtyWater && !person.learnedDirtyWater;
-    const pond = world.findNearestPond(person.position, { allowContaminated: allowDirty });
+    const pond = world.findNearestPond(person.position);
     if (!pond) return null;
     return new SequenceAction('Su içmeye gidiyor', [
       new MoveToAction(`${pond.destination} gidiyor`, pond.shorePointFrom(person.position), { arriveDistance: 2 }),
       new PerformAction('Su içiyor', 5 * MINUTE, {
         onComplete: (p, w) => {
           p.needs.drink();
-          if (!pond.contaminated) return DrinkPlanner.fillJar(p, w);
-          p.learnedDirtyWater = true;
-          w.log.add(`🤢 ${p.name} kirli su içip hastalandı`, LogType.DANGER, [p]);
-          p.takeDamage(DIRTY_WATER_DAMAGE, w, 'kirli su');
+          DrinkPlanner.fillJar(p, w);
         },
       }),
     ]);

@@ -8,7 +8,7 @@ const NEW_PER_FRAME = 24; // kare başına üretilecek en fazla yeni parça resm
 const MIN_DOT_PX = 0.6;
 
 /**
- * Orta yakınlık: her parçanın bitkileri küçük bir resme bir kez çizilir.
+ * Orta yakınlık: her parçanın bitkileri saydam küçük bir resme bir kez çizilir, altta zemin görünür.
  * Mevsim ya da parça içeriği değişince resim yenilenir.
  */
 export class ChunkLayer {
@@ -57,8 +57,6 @@ export class ChunkLayer {
     const ctx = canvas.getContext('2d');
     const size = chunk.maxX - chunk.minX;
     const scale = BITMAP / size;
-    ctx.fillStyle = season.palette.ground;
-    ctx.fillRect(0, 0, BITMAP, BITMAP);
     ctx.setTransform(scale, 0, 0, scale, -chunk.minX * scale, -chunk.minY * scale);
     const radiusOf = (p) => Math.max(p.radius, MIN_DOT_PX / scale);
     DotPainter.batch(ctx, chunk.grass, season.palette.grass, radiusOf);

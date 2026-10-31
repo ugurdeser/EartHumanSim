@@ -27,7 +27,6 @@ export class Captivity {
     this.animal.wake(world);
     this.animal.herd?.remove(this.animal);
     pen.herd.add(this.animal);
-    pen.herd.shelterSeasons = this.animal.species.shelterSeasons; // kışı yamaçta geçirir (kışlak)
     this.animal.domestication = new Domestication(pen);
     world.forgetPredator(this.animal);
   }

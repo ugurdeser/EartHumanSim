@@ -8,15 +8,17 @@ const LIMB_SHADE = 0.25; // kenara doğru kararma
 const NIGHT_LIGHT = 0.1; // gece yüzünün aydınlığı
 const TWILIGHT = 0.07; // atmosferin yaydığı alacakaranlık şeridi
 const CLOUD_BRIGHTNESS = 248;
+const SNOW_BRIGHTNESS = 244;
 const SPIN_STEPS = 3000; // ekvator bu kadar adıma bölünür: dönüş bir adım ilerleyince resim yenilenir
 const PERSON_PX = 3;
 
 /** Uzaktan görünüm: uzak harita resmi küreye sarılır, baktığın boylam ortada durur. */
 export class GlobeLayer {
-  constructor(world, overview, clouds) {
+  constructor(world, overview, clouds, hillshade) {
     this.world = world;
     this.overview = overview;
     this.clouds = clouds;
+    this.hillshade = hillshade;
     this.canvas = document.createElement('canvas');
     this.painted = '';
   }
@@ -72,8 +74,13 @@ export class GlobeLayer {
         const light = (NIGHT_LIGHT + (1 - NIGHT_LIGHT) * daylight) * (1 - LIMB_SHADE * (1 - nz));
         const to = (py * width + px) * 4;
         const cloud = this.clouds.opacity(u, v, days, threshold);
+        const worldX = u * camera.worldWidth;
+        const worldY = v * this.world.height;
+        const snow = this.hillshade.snowAt(worldX, worldY);
+        const relief = 1 + this.hillshade.lightAt(worldX, worldY);
         for (let channel = 0; channel < 3; channel++) {
-          const ground = source[a + channel] * wa + source[b + channel] * wb + source[c + channel] * wc + source[d + channel] * wd;
+          const texel = source[a + channel] * wa + source[b + channel] * wb + source[c + channel] * wc + source[d + channel] * wd;
+          const ground = (texel + (SNOW_BRIGHTNESS - texel) * snow) * relief;
           image.data[to + channel] = (ground * (1 - cloud) + CLOUD_BRIGHTNESS * cloud) * light;
         }
         image.data[to + 3] = 255;

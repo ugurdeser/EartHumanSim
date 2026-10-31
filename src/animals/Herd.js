@@ -5,23 +5,18 @@ import { clamp01 } from '../core/MathUtils.js';
 const DRIFT_SPEED = 0.25;
 const DRIFT_RADIUS = 300;
 const DRIFT_SAMPLES = 3; // sürü bir sonraki otlağı birkaç aday arasından en otlusu olarak seçer
-const SHELTER_SEARCH = 1500;
 const WARINESS_FADE = 3 * DAY; // avlanan sürü bu sürede sakinleşir
 
 /**
- * Sürü: üyeler ortak bir merkezin çevresinde yaşar. Merkez otlu yerlere doğru yavaşça kayar;
- * sığınma mevsiminde (kış) en yakın yamaca gider ve orada kalır, yamaç yoksa olduğu yerde bekler.
+ * Sürü: üyeler ortak bir merkezin çevresinde yaşar. Merkez otlu yerlere doğru yavaşça kayar.
  */
 export class Herd {
-  constructor(center, { maxSize, shelterSeasons = [], roams = true, tether = null }) {
+  constructor(center, { maxSize, roams = true, tether = null }) {
     this.center = center.clone();
     this.maxSize = maxSize;
-    this.shelterSeasons = shelterSeasons;
     this.roams = roams; // false: merkez yerinden oynamaz (ör. göletteki balıklar)
     this.tether = tether; // varsa ağıl: gündüz çevresinde otlar, gece döner
     this.target = null;
-    this.shelter = null; // sığınma mevsiminde seçilen yamaç
-    this.sheltering = false;
     this.alarmedAt = -Infinity;
     this.members = new Set();
     this.lastUpdate = null; // sürü kendi saatini tutar: hangi üye uyanıksa o ilerletir
@@ -71,9 +66,6 @@ export class Herd {
     const dt = this.lastUpdate === null ? 0 : world.now - this.lastUpdate;
     this.lastUpdate = world.now;
     if (dt <= 0 || !this.roams) return;
-    if (this.shelterSeasons.includes(world.calendar.season)) return this.#shelter(world, dt);
-    this.sheltering = false;
-    this.shelter = null;
     if (this.tether) return this.#tended(world, dt);
     if (!this.target || this.center.distanceTo(this.target) < 5) this.target = this.#nextPasture(world);
     this.#moveCenter(this.target, dt);
@@ -99,14 +91,6 @@ export class Herd {
       }
     }
     return best;
-  }
-
-  #shelter(world, dt) {
-    if (!this.sheltering) {
-      this.sheltering = true;
-      this.shelter = world.findNearestHillside(this.center, SHELTER_SEARCH);
-    }
-    if (this.shelter) this.#moveCenter(this.shelter.position, dt);
   }
 
   #moveCenter(target, dt) {

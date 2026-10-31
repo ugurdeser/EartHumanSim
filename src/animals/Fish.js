@@ -44,7 +44,6 @@ export class Fish extends HerdAnimal {
       litterSize: F.LITTER_SIZE,
       mateRadius: F.MATE_RADIUS,
     }),
-    shelterSeasons: Object.freeze([]),
     thinkInterval: F.THINK_INTERVAL, // tehdit algılamaz; seyrek karar vermesi yeter
     maxSleep: F.MAX_SLEEP,
     glides: true, // tehlike algılamaz: yüzüşü uyurken hesaplanır, çizimde kayarak görünür

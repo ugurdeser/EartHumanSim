@@ -1,12 +1,18 @@
 import { PLANET, WORLD } from '../config.js';
-import { lerp } from '../core/MathUtils.js';
-import { seamless, wrapX } from '../core/Planet.js';
+import { clamp01, lerp, smoothstep } from '../core/MathUtils.js';
+import { seamless, wrapDelta, wrapX } from '../core/Planet.js';
 import { ValueNoise } from '../core/ValueNoise.js';
 import { Vector2 } from '../core/Vector2.js';
 
 const CELL = 200; // m: yükselti alanının çözünürlüğü (arası yumuşatılır)
 const START_STEP = 2000; // m: başlangıç yeri arama aralığı
 const START_RING = 12; // kıyı kontrolünde çevredeki örnek sayısı
+const LAND_RISE = 0.2; // kıyıdan bu kadar yükselince tam iç kesim sayılır
+const BELT_SCALE = 30000; // m: dağ kuşaklarının genişliği
+const RIDGE_SCALE = 6000; // m: sırtlar arası uzaklık
+const HILL_SCALE = 2500; // m: tepeler arası uzaklık
+const HILL_SHARE = 0.14; // tepelerin en yüksek dağa oranı
+const SLOPE_SPREAD = 320; // m: eğim bu kadar ötedeki yüksekliklerden ölçülür
 
 export const Surface = Object.freeze({ LAND: 0, SEA: 1, ICE: 2 });
 
@@ -19,9 +25,11 @@ export class Terrain {
     this.cols = Math.ceil(WORLD.WIDTH / CELL);
     this.rows = Math.ceil(WORLD.HEIGHT / CELL) + 1;
     this.heights = new Float32Array(this.cols * this.rows);
+    this.elevations = new Float32Array(this.cols * this.rows);
     this.icePhase = [rng.angle(), rng.angle()];
     this.#build(rng);
     this.start = this.#findStart();
+    this.#raiseMountains(rng);
   }
 
   #build(rng) {
@@ -34,6 +42,26 @@ export class Terrain {
       }
     }
     this.seaLevel = Float32Array.from(this.heights).sort()[Math.floor(this.heights.length * PLANET.SEA_SHARE)];
+  }
+
+  /** Karanın kabartması: geniş kuşaklar boyunca sırtlar, her yerde alçak tepeler. Deniz ve buzul düzdür. */
+  #raiseMountains(rng) {
+    const noise = new ValueNoise(rng);
+    for (let row = 0; row < this.rows; row++) {
+      for (let col = 0; col < this.cols; col++) {
+        const i = row * this.cols + col;
+        const x = col * CELL;
+        const y = row * CELL;
+        const inland = clamp01((this.heights[i] - this.seaLevel) / LAND_RISE);
+        if (inland <= 0 || this.#isIce(x, y)) continue;
+        const fromStart = Math.hypot(wrapDelta(x - this.start.x), y - this.start.y);
+        const open = smoothstep(PLANET.START_LAND * 0.6, PLANET.START_LAND * 1.2, fromStart); // ilk insanlar dağda başlamaz
+        const belt = open * smoothstep(0.48, 0.62, seamless(x, (at) => noise.fractal(at / BELT_SCALE, y / BELT_SCALE, 2)));
+        const ridge = 1 - Math.abs(2 * seamless(x, (at) => noise.fractal(at / RIDGE_SCALE, y / RIDGE_SCALE, 4)) - 1);
+        const hills = seamless(x, (at) => noise.fractal(at / HILL_SCALE, y / HILL_SCALE, 3));
+        this.elevations[i] = smoothstep(0, 0.5, inland) * (belt * ridge * ridge + hills * HILL_SHARE);
+      }
+    }
   }
 
   /** Ilıman enlemde, çevresi en geniş karayla çevrili kıta içi nokta. */
@@ -63,13 +91,30 @@ export class Terrain {
   }
 
   #height(x, y) {
+    return this.#sample(this.heights, x, y);
+  }
+
+  /** Karanın yüksekliği (0: kıyı, 1: en yüksek sırt). */
+  elevationAt(x, y) {
+    return this.#sample(this.elevations, x, y);
+  }
+
+  /** Yükselmenin doğuya ve güneye doğru hızı (yükselti/m). */
+  gradientAt(x, y) {
+    return {
+      east: (this.elevationAt(x + SLOPE_SPREAD, y) - this.elevationAt(x - SLOPE_SPREAD, y)) / (SLOPE_SPREAD * 2),
+      south: (this.elevationAt(x, y + SLOPE_SPREAD) - this.elevationAt(x, y - SLOPE_SPREAD)) / (SLOPE_SPREAD * 2),
+    };
+  }
+
+  #sample(field, x, y) {
     const u = wrapX(x) / CELL;
     const v = Math.min(this.rows - 1.001, Math.max(0, y / CELL));
     const col = Math.floor(u);
     const row = Math.floor(v);
     const next = (col + 1) % this.cols;
-    const top = lerp(this.heights[row * this.cols + col], this.heights[row * this.cols + next], u - col);
-    const bottom = lerp(this.heights[(row + 1) * this.cols + col], this.heights[(row + 1) * this.cols + next], u - col);
+    const top = lerp(field[row * this.cols + col], field[row * this.cols + next], u - col);
+    const bottom = lerp(field[(row + 1) * this.cols + col], field[(row + 1) * this.cols + next], u - col);
     return lerp(top, bottom, v - row);
   }
 

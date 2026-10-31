@@ -1,8 +1,8 @@
 import { FEATURES, PLANET, WORLD } from '../config.js';
 import { lerp } from '../core/MathUtils.js';
 import { Vector2 } from '../core/Vector2.js';
-import { Hillside } from './Hillside.js';
 import { Mine } from './Mine.js';
+import { Outline } from './Outline.js';
 import { ALL_MINE_TYPES } from './MineTypes.js';
 import { Pond } from './Pond.js';
 import { RiverSegment } from './RiverSegment.js';
@@ -11,9 +11,12 @@ const KM2 = 1e6;
 const SEGMENT_SPACING = 0.7; // ardışık parçalar yarıçapın bu katı kadar arayla: kıyı düzgün görünür
 const MEANDER_ANGLE = 0.7; // rad: nehrin kıvrılma açısı
 const RIVER_LABEL_EVERY = 90; // kaç parçada bir haritaya "Nehir" yazılır
+const BASIN_STEP = 60; // m: göletin çukura inerken attığı adım
+const BASIN_STEPS = 6;
+const BASIN_DIRECTIONS = 8;
 
 /**
- * Seyrek ama kalıcı yapıları tüm harita için baştan üretir: nehir, göletler, madenler, yamaçlar.
+ * Seyrek ama kalıcı yapıları tüm harita için baştan üretir: nehir, göletler, madenler.
  * Bitkiler ise ChunkGenerator ile gerektikçe üretilir.
  */
 export class FeatureGenerator {
@@ -25,7 +28,6 @@ export class FeatureGenerator {
     this.#placeRiver(world, startCenter);
     this.#placePonds(world, this.#points(world, startCenter, FEATURES.POND_DENSITY));
     for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, this.#points(world, startCenter, type.density));
-    this.#placeHillsides(world, this.#points(world, startCenter, FEATURES.HILLSIDE_DENSITY));
     this.#guaranteeStartArea(world, startCenter);
   }
 
@@ -39,8 +41,34 @@ export class FeatureGenerator {
     return [...home, ...far];
   }
 
-  #pond(position, contaminated) {
-    return new Pond(position.x, position.y, { radius: this.rng.range(25, 90), contaminated });
+  /** Noktanın çevresindeki yönler. */
+  #ring(point, distance) {
+    return Array.from({ length: BASIN_DIRECTIONS }, (_, i) => {
+      const angle = (i / BASIN_DIRECTIONS) * Math.PI * 2;
+      return new Vector2(point.x + Math.cos(angle) * distance, point.y + Math.sin(angle) * distance);
+    });
+  }
+
+  /** Su akıp çukura iner. */
+  #basin(world, start) {
+    const { terrain } = world;
+    let point = start;
+    for (let i = 0; i < BASIN_STEPS; i++) {
+      const lower = this.#ring(point, BASIN_STEP)
+        .filter((p) => world.isPassable(p.x, p.y))
+        .reduce((best, p) => (terrain.elevationAt(p.x, p.y) < terrain.elevationAt(best.x, best.y) ? p : best), point);
+      if (lower === point) break;
+      point = lower;
+    }
+    world.clampPosition(point);
+    return point;
+  }
+
+  #pond(world, start) {
+    const position = this.#basin(world, start);
+    const radius = this.rng.range(25, 90);
+    const outline = Outline.ofWater(world.terrain, position.x, position.y, radius, this.rng);
+    return new Pond(position.x, position.y, { radius, outline });
   }
 
   #mine(position, type) {
@@ -82,7 +110,7 @@ export class FeatureGenerator {
 
   #placePonds(world, points) {
     for (const p of points) {
-      if (world.isPassable(p.x, p.y)) world.addPond(this.#pond(p, this.rng.chance(FEATURES.DIRTY_POND_RATIO)));
+      if (world.isPassable(p.x, p.y)) world.addPond(this.#pond(world, p));
     }
   }
 
@@ -92,25 +120,10 @@ export class FeatureGenerator {
     }
   }
 
-  #hillside(position) {
-    return new Hillside(position.x, position.y, {
-      radius: this.rng.range(50, 120),
-      warmth: this.rng.range(6, 10),
-      forage: this.rng.range(0.3, 0.5),
-    });
-  }
-
-  #placeHillsides(world, points) {
-    for (const p of points) {
-      if (!world.isWater(p.x, p.y, 60)) world.addHillside(this.#hillside(p));
-    }
-  }
-
-  /** İlk insanların çevresinde temiz su, bir yamaç ve her maden türünden en az biri olsun. */
+  /** İlk insanların çevresinde su ve her maden türünden en az biri olsun. */
   #guaranteeStartArea(world, center) {
     const near = () => world.randomPointNear(center, WORLD.START_AREA_RADIUS);
-    const cleanPonds = world.pondsNear(center, WORLD.START_AREA_RADIUS).filter((p) => !p.contaminated);
-    for (let i = cleanPonds.length; i < 2; i++) world.addPond(this.#pond(near(), false));
+    for (let i = world.pondsNear(center, WORLD.START_AREA_RADIUS).length; i < 2; i++) world.addPond(this.#pond(world, near()));
 
     for (const type of ALL_MINE_TYPES) {
       if (world.findNearestMine(center, type.resource, WORLD.START_AREA_RADIUS)) continue;
@@ -118,13 +131,6 @@ export class FeatureGenerator {
       do p = near();
       while (world.isWater(p.x, p.y, 20));
       world.addMine(this.#mine(p, type));
-    }
-
-    if (!world.findNearestHillside(center, WORLD.START_AREA_RADIUS)) {
-      let p;
-      do p = near();
-      while (world.isWater(p.x, p.y, 60));
-      world.addHillside(this.#hillside(p));
     }
   }
 }

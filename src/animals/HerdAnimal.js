@@ -23,7 +23,7 @@ let created = 0; // toplu güncellemeler hayvanlara yayılsın diye sıra
  * ürünler ve davranışlar. Yeni bir tür (keçi, inek ...) yalnızca SPECIES profilini tanımlar:
  *
  *   { id, name, color, dangerous, huntable, domestication, names: { male, female, young },
- *     genes, life, needs, reproduction, movement: { walk, run }, maxHerd, shelterSeasons, thinkInterval?, maxSleep?, glides?,
+ *     genes, life, needs, reproduction, movement: { walk, run }, maxHerd, thinkInterval?, maxSleep?, glides?,
  *     createProducts(), createBehaviors() }
  */
 export class HerdAnimal extends Animal {
@@ -67,7 +67,7 @@ export class HerdAnimal extends Animal {
   /** Bu türe uygun boş bir sürü. */
   static createHerd(center) {
     const species = this.SPECIES;
-    return new Herd(center, { maxSize: species.maxHerd, shelterSeasons: species.shelterSeasons });
+    return new Herd(center, { maxSize: species.maxHerd });
   }
 
   // ---------- Kimlik ----------
@@ -158,10 +158,9 @@ export class HerdAnimal extends Animal {
 
   // ---------- Çevre ----------
 
-  /** Hava + bulunduğu yamacın koruması + kendi yünü. */
+  /** Hava + kendi yünü. */
   feltTemperature(world) {
-    const shelter = world.hillsideAt(this.position);
-    return world.weather.exposedTemperature + world.climateAt(this.position) + (shelter?.warmth ?? 0) + this.products.insulation;
+    return world.weather.exposedTemperature + world.climateAt(this.position) + this.products.insulation;
   }
 
   // ---------- Döngü ----------

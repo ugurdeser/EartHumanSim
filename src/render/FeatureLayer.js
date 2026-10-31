@@ -2,9 +2,9 @@ import { COLORS, FIRE, ROAD } from '../config.js';
 import { DotPainter } from './DotPainter.js';
 
 const LABEL_ZOOM = 0.5;
-const POND_REACH = 90;
+const POND_REACH = 131;
 
-/** Yamaçlar, yollar, göletler, madenler ve yuvalar (yalnızca görünür olanlar). */
+/** Yollar, göletler, madenler ve yuvalar (yalnızca görünür olanlar). */
 export class FeatureLayer {
   constructor(world) {
     this.world = world;
@@ -14,16 +14,18 @@ export class FeatureLayer {
     const { minX, minY, maxX, maxY } = camera.visibleBounds;
     const inView = (grid, cb, margin = POND_REACH) => grid.forEachInRect(minX - margin, minY - margin, maxX + margin, maxY + margin, cb);
 
-    inView(this.world.hillsideGrid, (hill) => this.#drawHillside(ctx, camera, hill), 120);
     this.#drawRoads(ctx, camera, minX, minY, maxX, maxY);
     const waters = [];
     inView(this.world.pondGrid, (pond) => {
-      DotPainter.dot(ctx, pond.position.x, pond.position.y, pond.radius, pond.contaminated ? COLORS.WATER_DIRTY : COLORS.WATER);
+      ctx.fillStyle = COLORS.WATER;
+      ctx.beginPath();
+      pond.trace(ctx);
+      ctx.fill();
       if (pond.mapLabel) waters.push(pond);
     });
     // yazılar suyun üstünde kalsın diye tüm sular çizildikten sonra
     if (camera.zoom >= LABEL_ZOOM) {
-      for (const pond of waters) this.#label(ctx, camera, pond.mapLabel, pond.position.x, pond.position.y, pond.contaminated ? '#4a4720' : '#1f5f96');
+      for (const pond of waters) this.#label(ctx, camera, pond.mapLabel, pond.position.x, pond.position.y, '#1f5f96');
     }
     inView(this.world.mineGrid, (mine) => this.#drawMine(ctx, camera, mine));
     inView(this.world.homeGrid, (home) => this.#drawHome(ctx, camera, home), 50);
@@ -44,12 +46,6 @@ export class FeatureLayer {
     this.world.roads.forEachInRect(minX, minY, maxX, maxY, (tile) => tiles.push({ position: tile }));
     const radius = Math.max(ROAD.TILE * 0.45, camera.pixels(1.5));
     DotPainter.batch(ctx, tiles, COLORS.ROAD, () => radius);
-  }
-
-  #drawHillside(ctx, camera, hill) {
-    const { x, y } = hill.position;
-    DotPainter.dot(ctx, x, y, hill.radius, COLORS.HILLSIDE);
-    if (camera.zoom >= LABEL_ZOOM) this.#label(ctx, camera, 'Yamaç', x, y, '#5e4a33');
   }
 
   #drawMine(ctx, camera, mine) {
