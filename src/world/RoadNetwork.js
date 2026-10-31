@@ -1,4 +1,5 @@
 import { ROAD } from '../config.js';
+import { wrapDelta, wrapX } from '../core/Planet.js';
 import { Vector2 } from '../core/Vector2.js';
 
 /** Taş yol karoları: üzerinde yürüyenler daha hızlı ilerler. */
@@ -17,7 +18,7 @@ export class RoadNetwork {
   }
 
   #tileOf(position) {
-    return [Math.floor(position.x / ROAD.TILE), Math.floor(position.y / ROAD.TILE)];
+    return [Math.floor(wrapX(position.x) / ROAD.TILE), Math.floor(position.y / ROAD.TILE)];
   }
 
   has(position) {
@@ -43,9 +44,10 @@ export class RoadNetwork {
     const steps = Math.ceil(distance / (ROAD.TILE * 0.7));
     const missing = [];
     const seen = new Set();
+    const eastward = wrapDelta(to.x - from.x);
     for (let i = 0; i <= steps; i++) {
       const t = i / steps;
-      const point = new Vector2(from.x + (to.x - from.x) * t, from.y + (to.y - from.y) * t);
+      const point = new Vector2(from.x + eastward * t, from.y + (to.y - from.y) * t);
       const [gx, gy] = this.#tileOf(point);
       const key = this.#key(gx, gy);
       if (seen.has(key) || this.tiles.has(key)) continue;

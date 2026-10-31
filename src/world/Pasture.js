@@ -14,7 +14,7 @@ export class Pasture {
    */
   forageAt(position) {
     const season = this.world.calendar.season;
-    const cover = this.world.chunks.peek(this.world.chunks.coord(position.x), this.world.chunks.coord(position.y))?.ecology?.grassCover ?? 1;
+    const cover = this.world.chunks.peek(this.world.chunks.coordX(position.x), this.world.chunks.coordY(position.y))?.ecology?.grassCover ?? 1;
     const meadow = Math.min(1, this.world.biomes.grassChance(position.x, position.y) * cover) * Math.max(MIN_SEASON_FORAGE, Math.min(1, season.growth));
     const hillside = this.world.hillsideAt(position);
     const open = meadow * this.world.weather.forageFactor;
@@ -26,7 +26,7 @@ export class Pasture {
    * Ot kökünden yeniden büyür; çok otlanan yer seyrelir (forageAt düşer).
    */
   graze(position, food) {
-    const chunk = this.world.chunks.peek(this.world.chunks.coord(position.x), this.world.chunks.coord(position.y));
+    const chunk = this.world.chunks.peek(this.world.chunks.coordX(position.x), this.world.chunks.coordY(position.y));
     if (!chunk?.ecology) return;
     const { GRAZE_PER_FOOD, GRAZE_REACH, MIN_GROWTH } = PLANTS.GRASS;
     let left = food * GRAZE_PER_FOOD;

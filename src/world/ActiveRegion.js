@@ -32,8 +32,9 @@ export class ActiveRegion {
 
   /** Kişinin bulunduğu hücrenin orta parçası. */
   #centerOf(position) {
-    const snap = (value) => Math.min(this.chunks.cols - 1, Math.floor(this.chunks.coord(value) / CENTER_CELL) * CENTER_CELL + CENTER_CELL / 2);
-    return this.chunks.keyOf(snap(position.x), snap(position.y));
+    const { cols, rows } = this.chunks;
+    const snap = (index) => Math.floor(index / CENTER_CELL) * CENTER_CELL + CENTER_CELL / 2;
+    return this.chunks.keyOf(snap(this.chunks.coordX(position.x)) % cols, Math.min(rows - 1, snap(this.chunks.coordY(position.y))));
   }
 
   onFirstActivation(listener) {
@@ -53,15 +54,14 @@ export class ActiveRegion {
     if (signature === this.signature) return;
     this.signature = signature;
 
-    const cols = this.chunks.cols;
+    const { cols, rows } = this.chunks;
     const next = new Set();
     for (const center of centers) {
       const cx = center % cols;
       const cy = Math.floor(center / cols);
       for (const [dx, dy] of this.offsets) {
-        const x = cx + dx;
         const y = cy + dy;
-        if (x >= 0 && y >= 0 && x < cols && y < cols) next.add(this.chunks.keyOf(x, y));
+        if (y >= 0 && y < rows) next.add(this.chunks.keyOf((cx + dx + cols) % cols, y));
       }
     }
     this.keys = next;

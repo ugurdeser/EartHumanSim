@@ -58,7 +58,7 @@ export class CuriosityDrive extends Drive {
       if (person.isDependent) return null;
     }
     const maxRing = person.isChild ? CHILD_ROAM_CELLS : ADULT_ROAM_CELLS;
-    const target = person.exploration.findUnexplored(person.position, world.rng, maxRing);
+    const target = person.exploration.findUnexplored(person.position, world.rng, maxRing, (x, y) => world.isPassable(x, y));
     if (!target) return null;
     return new SequenceAction('Keşfe çıktı', [
       new MoveToAction('Bilinmeyen yerleri keşfediyor', target, { arriveDistance: 10 }),

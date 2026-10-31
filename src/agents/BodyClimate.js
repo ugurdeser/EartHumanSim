@@ -10,7 +10,7 @@ export class BodyClimate {
   /** Hava (açıktaysa rüzgârla) + ateş + barınak yalıtımı + giysi − ıslaklık. */
   feltTemperature(world) {
     const air = this.person.isSheltered ? world.weather.temperature : world.weather.exposedTemperature;
-    let temperature = air + this.person.inventory.bestInsulation - this.person.needs.wetness * WEATHER.WET_CHILL;
+    let temperature = air + world.climateAt(this.person.position) + this.person.inventory.bestInsulation - this.person.needs.wetness * WEATHER.WET_CHILL;
     if (world.isNearLitFire(this.person.position)) temperature += FIRE.HEAT;
     if (this.person.isAtHome()) temperature += this.person.home.insulation;
     if (this.person.isCarried) temperature += AGING.CARRIED_WARMTH;

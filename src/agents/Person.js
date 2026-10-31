@@ -41,7 +41,7 @@ export class Person extends Agent {
     this.inventory = new Inventory(PERSON.CARRY_CAPACITY * (0.7 + traits.strength * 0.6));
     this.drives = DriveSet.fromPersonality(personality);
     this.relations = new RelationshipBook(this, rng);
-    this.exploration = new ExplorationMap(WORLD.SIZE, WORLD.EXPLORATION_CELL);
+    this.exploration = new ExplorationMap(WORLD.WIDTH, WORLD.HEIGHT, WORLD.EXPLORATION_CELL);
     this.brain = new DecisionMaker(this);
     this.history = new LifeHistory();
     this.climate = new BodyClimate(this);

@@ -161,7 +161,7 @@ export class HerdAnimal extends Animal {
   /** Hava + bulunduğu yamacın koruması + kendi yünü. */
   feltTemperature(world) {
     const shelter = world.hillsideAt(this.position);
-    return world.weather.exposedTemperature + (shelter?.warmth ?? 0) + this.products.insulation;
+    return world.weather.exposedTemperature + world.climateAt(this.position) + (shelter?.warmth ?? 0) + this.products.insulation;
   }
 
   // ---------- Döngü ----------

@@ -1,3 +1,4 @@
+import { wrapDelta } from '../../core/Planet.js';
 const MIN_SLEEP = 10; // bundan kısa uykuya değmez (sn)
 const DEFAULT_MAX_SLEEP = 10 * 60; // tür belirtmezse en uzun uyku (sn)
 
@@ -44,6 +45,6 @@ export class AnimalSleep {
     const glide = this.animal.glide;
     if (!glide) return this.animal.position;
     const t = Math.min(1, Math.max(0, (now - glide.start) / (glide.end - glide.start)));
-    return { x: glide.from.x + (glide.to.x - glide.from.x) * t, y: glide.from.y + (glide.to.y - glide.from.y) * t };
+    return { x: glide.from.x + wrapDelta(glide.to.x - glide.from.x) * t, y: glide.from.y + (glide.to.y - glide.from.y) * t };
   }
 }

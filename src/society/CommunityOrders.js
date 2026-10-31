@@ -73,5 +73,5 @@ export const COMMUNITY_ORDERS = Object.freeze([
     keeps: (t) => t.isFood,
   },
   materialOrder('stone', Items.STONE, 'Taş çıkarın!', 'mining', [Technologies.STONE_HOUSE, Technologies.STONE_ROAD], COMMUNITY.STONE_TARGET),
-  materialOrder('clay', Items.CLAY, 'Kil çıkarın!', 'mining', [Technologies.POTTERY], COMMUNITY.CLAY_TARGET),
+  materialOrder('clay', Items.CLAY, 'Kil çıkarın!', 'mining', [Technologies.WATER_JAR], COMMUNITY.CLAY_TARGET),
 ]);

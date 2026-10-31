@@ -1,5 +1,6 @@
-import { FIRE, PLANTS, SIM, WORLD } from '../config.js';
+import { DAY, FIRE, PLANET, PLANTS, SIM, WORLD } from '../config.js';
 import { clamp } from '../core/MathUtils.js';
+import { latitudeOf, wrapDelta, wrapX } from '../core/Planet.js';
 import { Scheduler } from '../core/Scheduler.js';
 import { SpatialGrid } from '../core/SpatialGrid.js';
 import { Vector2 } from '../core/Vector2.js';
@@ -13,6 +14,7 @@ import { ChunkManager } from './chunks/ChunkManager.js';
 import { Demography } from './Demography.js';
 import { Pasture } from './Pasture.js';
 import { RoadNetwork } from './RoadNetwork.js';
+import { Terrain } from './Terrain.js';
 
 const MAX_POND_RADIUS = 90;
 const MAX_HILLSIDE_RADIUS = 120;
@@ -21,14 +23,17 @@ const MAX_PLANT_RADIUS = PLANTS.TREE.RADIUS[1];
 /** Fiziksel dünya: arazi, su, madenler, yuvalar, yollar ve tüm canlılar. */
 export class World {
   constructor({ rng, clock, calendar, log }) {
-    this.size = WORLD.SIZE;
+    this.width = WORLD.WIDTH;
+    this.height = WORLD.HEIGHT;
     this.rng = rng;
     this.clock = clock;
     this.calendar = calendar;
     this.log = log;
     this.weather = new WeatherSystem({ rng, calendar, log });
 
-    this.biomes = new BiomeMap(rng);
+    this.terrain = new Terrain(rng);
+    this.start = this.terrain.start;
+    this.biomes = new BiomeMap(rng, this.start);
     this.ponds = [];
     this.mines = [];
     this.hillsides = [];
@@ -39,14 +44,15 @@ export class World {
     this.animals = [];
     this.predators = []; // tehlikeli hayvanlar (hızlı sorgu için ayrı liste)
 
-    this.pondGrid = new SpatialGrid(this.size, WORLD.FEATURE_CELL);
-    this.mineGrid = new SpatialGrid(this.size, WORLD.FEATURE_CELL);
-    this.hillsideGrid = new SpatialGrid(this.size, WORLD.FEATURE_CELL);
-    this.homeGrid = new SpatialGrid(this.size, WORLD.FEATURE_CELL);
-    this.roads = new RoadNetwork(this.size);
+    this.pondGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
+    this.mineGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
+    this.hillsideGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
+    this.homeGrid = new SpatialGrid(this.width, this.height, WORLD.FEATURE_CELL);
+    this.roads = new RoadNetwork(this.width);
 
     this.chunks = new ChunkManager({
-      worldSize: this.size,
+      worldWidth: this.width,
+      worldHeight: this.height,
       chunkSize: WORLD.CHUNK_SIZE,
       maxLoaded: WORLD.MAX_LOADED_CHUNKS,
       generator: new ChunkGenerator({ seed: rng.seed, biomes: this.biomes, isWater: (x, y, m) => this.isWater(x, y, m) }),
@@ -65,6 +71,11 @@ export class World {
 
   get now() {
     return this.clock.time;
+  }
+
+  /** Güneşin tam tepede olduğu boylam: öğlen başlangıç bölgesinin üstünde, batıya doğru döner. */
+  get sunX() {
+    return wrapX(this.start.x - ((this.now % DAY) / DAY - 0.5) * this.width);
   }
 
   // ---------- Kurulum ----------
@@ -121,7 +132,7 @@ export class World {
   /** Ekilen bitkiyi bulunduğu parçaya koyar. */
   addPlant(plant) {
     const { x, y } = plant.position;
-    const chunk = this.chunks.get(this.chunks.coord(x), this.chunks.coord(y));
+    const chunk = this.chunks.get(this.chunks.coordX(x), this.chunks.coordY(y));
     chunk[plant.species.layer].push(plant);
     chunk.markChanged();
     return plant;
@@ -129,7 +140,7 @@ export class World {
 
   /** Noktanın `spacing` kadar yakınında aynı katmandan yaşayan bitki yok mu? */
   isPlantSpotFree(point, Species, spacing) {
-    const chunk = this.chunks.get(this.chunks.coord(point.x), this.chunks.coord(point.y));
+    const chunk = this.chunks.get(this.chunks.coordX(point.x), this.chunks.coordY(point.y));
     const spacingSq = spacing * spacing;
     return !chunk[Species.SPECIES.layer].some((p) => p.alive && p.position.distanceSqTo(point) < spacingSq);
   }
@@ -150,8 +161,18 @@ export class World {
   // ---------- Arazi sorguları ----------
 
   clampPosition(position) {
-    position.x = clamp(position.x, 0, this.size);
-    position.y = clamp(position.y, 0, this.size);
+    position.x = wrapX(position.x);
+    position.y = clamp(position.y, 0, this.height);
+  }
+
+  /** Deniz ve buzul yürünemez. */
+  isPassable(x, y) {
+    return this.terrain.isLand(x, y);
+  }
+
+  /** Enleme göre sıcaklık farkı (°C): ekvator sıcak, kutuplar soğuk; başlangıç enleminde sıfır. */
+  climateAt(position) {
+    return PLANET.CLIMATE_SWING * (0.25 - Math.sin(latitudeOf(position.y)) ** 2);
   }
 
   randomPointNear(center, radius) {
@@ -163,10 +184,11 @@ export class World {
   }
 
   isWater(x, y, margin = 0) {
+    if (!this.isPassable(x, y)) return true;
     const reach = MAX_POND_RADIUS + margin;
     let water = false;
     this.pondGrid.forEachInRect(x - reach, y - reach, x + reach, y + reach, (pond) => {
-      if (!water && Math.hypot(pond.position.x - x, pond.position.y - y) <= pond.radius + margin) water = true;
+      if (!water && Math.hypot(wrapDelta(pond.position.x - x), pond.position.y - y) <= pond.radius + margin) water = true;
     });
     return water;
   }
@@ -248,7 +270,7 @@ export class World {
 
   /** Bir noktanın bulunduğu parçayı "değişti" diye işaretler (görsel önbellek için). */
   markChanged(position) {
-    this.chunks.get(this.chunks.coord(position.x), this.chunks.coord(position.y)).markChanged();
+    this.chunks.get(this.chunks.coordX(position.x), this.chunks.coordY(position.y)).markChanged();
   }
 
   isNearLitFire(position) {

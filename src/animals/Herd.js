@@ -1,3 +1,4 @@
+import { wrapDelta, wrapX } from '../core/Planet.js';
 import { DAY } from '../config.js';
 import { clamp01 } from '../core/MathUtils.js';
 
@@ -109,12 +110,12 @@ export class Herd {
   }
 
   #moveCenter(target, dt) {
-    const dx = target.x - this.center.x;
+    const dx = wrapDelta(target.x - this.center.x);
     const dy = target.y - this.center.y;
     const d = Math.hypot(dx, dy);
     if (d < 1e-6) return;
     const step = Math.min(DRIFT_SPEED * dt, d);
-    this.center.x += (dx / d) * step;
+    this.center.x = wrapX(this.center.x + (dx / d) * step);
     this.center.y += (dy / d) * step;
   }
 }

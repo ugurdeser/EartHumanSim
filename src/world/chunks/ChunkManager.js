@@ -1,3 +1,4 @@
+import { wrapX } from '../../core/Planet.js';
 import { Chunk } from './Chunk.js';
 
 /**
@@ -5,9 +6,10 @@ import { Chunk } from './Chunk.js';
  * Dünyanın geri kalanı parçaların nasıl üretildiğini bilmez (yalnızca sorgular).
  */
 export class ChunkManager {
-  constructor({ worldSize, chunkSize, generator, maxLoaded }) {
+  constructor({ worldWidth, worldHeight, chunkSize, generator, maxLoaded }) {
     this.chunkSize = chunkSize;
-    this.cols = Math.ceil(worldSize / chunkSize);
+    this.cols = Math.ceil(worldWidth / chunkSize);
+    this.rows = Math.ceil(worldHeight / chunkSize);
     this.generator = generator;
     this.maxLoaded = maxLoaded;
     this.chunks = new Map();
@@ -18,8 +20,12 @@ export class ChunkManager {
     return this.chunks.size;
   }
 
-  coord(value) {
-    return Math.min(this.cols - 1, Math.max(0, Math.floor(value / this.chunkSize)));
+  coordX(x) {
+    return Math.min(this.cols - 1, Math.floor(wrapX(x) / this.chunkSize));
+  }
+
+  coordY(y) {
+    return Math.min(this.rows - 1, Math.max(0, Math.floor(y / this.chunkSize)));
   }
 
   keyOf(cx, cy) {
@@ -27,7 +33,7 @@ export class ChunkManager {
   }
 
   keyAt(position) {
-    return this.keyOf(this.coord(position.x), this.coord(position.y));
+    return this.keyOf(this.coordX(position.x), this.coordY(position.y));
   }
 
   /** Parçayı döndürür; henüz yoksa üretir. */
@@ -53,12 +59,13 @@ export class ChunkManager {
   }
 
   forEachInRect(minX, minY, maxX, maxY, callback, { generate = true } = {}) {
-    const x0 = this.coord(minX);
-    const y0 = this.coord(minY);
-    const x1 = this.coord(maxX);
-    const y1 = this.coord(maxY);
+    const x0 = Math.floor(minX / this.chunkSize);
+    const x1 = Math.min(Math.floor(maxX / this.chunkSize), x0 + this.cols - 1);
+    const y0 = this.coordY(minY);
+    const y1 = this.coordY(maxY);
     for (let cy = y0; cy <= y1; cy++) {
-      for (let cx = x0; cx <= x1; cx++) {
+      for (let gx = x0; gx <= x1; gx++) {
+        const cx = ((gx % this.cols) + this.cols) % this.cols;
         const chunk = generate ? this.get(cx, cy) : this.peek(cx, cy);
         if (chunk) callback(chunk);
       }
@@ -70,8 +77,8 @@ export class ChunkManager {
    * `itemsOf(chunk)` parçadaki aday listesini verir.
    */
   findNearest(position, maxRadius, itemsOf, predicate = () => true) {
-    const cx = this.coord(position.x);
-    const cy = this.coord(position.y);
+    const cx = this.coordX(position.x);
+    const cy = this.coordY(position.y);
     const maxRing = Math.ceil(maxRadius / this.chunkSize);
     let best = null;
     let bestDistance = maxRadius;
@@ -79,11 +86,10 @@ export class ChunkManager {
     for (let ring = 0; ring <= maxRing; ring++) {
       if (best && (ring - 1) * this.chunkSize > bestDistance) break;
       for (let gy = cy - ring; gy <= cy + ring; gy++) {
-        if (gy < 0 || gy >= this.cols) continue;
+        if (gy < 0 || gy >= this.rows) continue;
         for (let gx = cx - ring; gx <= cx + ring; gx++) {
-          if (gx < 0 || gx >= this.cols) continue;
           if (Math.max(Math.abs(gx - cx), Math.abs(gy - cy)) !== ring) continue;
-          const chunk = this.get(gx, gy);
+          const chunk = this.get((gx + this.cols) % this.cols, gy);
           if (chunk.distanceTo(position) > bestDistance) continue;
           for (const item of itemsOf(chunk)) {
             const distance = position.distanceTo(item.position);

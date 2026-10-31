@@ -3,7 +3,7 @@ import { OverviewLayer } from './OverviewLayer.js';
 
 const BITMAP = 96; // parça resmi kenarı (piksel)
 const MAX_ZOOM = 1.5; // bundan yakında bitkiler tek tek çizilir
-const CACHE_LIMIT = 900;
+const CACHE_LIMIT = 1800;
 const NEW_PER_FRAME = 24; // kare başına üretilecek en fazla yeni parça resmi
 const MIN_DOT_PX = 0.6;
 
@@ -27,10 +27,10 @@ export class ChunkLayer {
     const { minX, minY, maxX, maxY } = camera.visibleBounds;
     let budget = NEW_PER_FRAME;
     const chunks = this.world.chunks;
-    const x0 = chunks.coord(minX);
-    const y0 = chunks.coord(minY);
-    const x1 = chunks.coord(maxX);
-    const y1 = chunks.coord(maxY);
+    const x0 = Math.max(0, Math.floor(minX / chunks.chunkSize)); // dikişin öbür yanı ayrı geçişte çizilir
+    const y0 = chunks.coordY(minY);
+    const x1 = Math.min(chunks.cols - 1, Math.floor(maxX / chunks.chunkSize));
+    const y1 = chunks.coordY(maxY);
 
     for (let cy = y0; cy <= y1; cy++) {
       for (let cx = x0; cx <= x1; cx++) {

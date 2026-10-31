@@ -1,3 +1,4 @@
+import { wrapDelta } from '../core/Planet.js';
 import { ANIMALS } from '../config.js';
 import { Vector2 } from '../core/Vector2.js';
 import { Entity } from './Entity.js';
@@ -41,7 +42,7 @@ export class Pond extends Entity {
 
   /** Verilen noktaya bakan kıyı noktası. */
   shorePointFrom(from) {
-    const dir = new Vector2(from.x - this.position.x, from.y - this.position.y).normalize();
+    const dir = new Vector2(wrapDelta(from.x - this.position.x), from.y - this.position.y).normalize();
     if (dir.x === 0 && dir.y === 0) dir.set(1, 0);
     return dir.scale(this.radius + 1.5).add(this.position);
   }

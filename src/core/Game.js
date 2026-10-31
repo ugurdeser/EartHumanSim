@@ -27,7 +27,7 @@ export class Game {
 
     this.fastForward = new FastForward(clock, world);
     this.selection = new Selection();
-    this.camera = new Camera(world.size);
+    this.camera = new Camera(world.width, world.height);
     this.renderer = new Renderer(canvas, world, this.camera, this.selection);
     this.camera.fitWorld();
     this.camera.zoom = Math.min(this.camera.width, this.camera.height) / START_VIEW_METERS;

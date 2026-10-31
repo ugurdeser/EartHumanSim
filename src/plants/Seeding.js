@@ -10,7 +10,7 @@ export class Seeding {
     const species = mother.species;
     const point = world.randomPointNear(mother.position, species.seedRadius);
     const chunks = world.chunks;
-    const target = chunks.peek(chunks.coord(point.x), chunks.coord(point.y));
+    const target = chunks.peek(chunks.coordX(point.x), chunks.coordY(point.y));
     if (!target?.ecology) return null; // henüz izlenmeyen parçaya düşen tohum kaybolur
 
     const list = target[species.layer];

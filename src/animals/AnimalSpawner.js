@@ -27,16 +27,17 @@ export class AnimalSpawner {
     const rng = Random.derive(world.rng.seed ^ SPAWN_SALT, chunks.keyOf(cx, cy));
     const center = new Vector2((cx + 0.5) * size, (cy + 0.5) * size);
 
+    const fertility = world.biomes.fertility(center.x, center.y); // uzak diyarlar ve soğuk kuşaklar seyrek
     const farFromPeople = world.peopleNear(center, WOLF_MIN_DISTANCE_TO_PEOPLE).length === 0;
-    if (farFromPeople && world.biomes.isForest(center.x, center.y) && rng.chance(ANIMALS.WOLF.SPAWN_CHANCE)) {
+    if (farFromPeople && world.biomes.isForest(center.x, center.y) && !world.isWater(center.x, center.y, 10) && rng.chance(ANIMALS.WOLF.SPAWN_CHANCE * fertility)) {
       Wolf.createPack(world, center, rng.int(...ANIMALS.WOLF.PACK_SIZE));
     }
-    if (world.biomes.isMeadow(center.x, center.y) && rng.chance(ANIMALS.SHEEP.SPAWN_CHANCE) && !world.isWater(center.x, center.y, 10)) {
+    if (world.biomes.isMeadow(center.x, center.y) && rng.chance(ANIMALS.SHEEP.SPAWN_CHANCE * fertility) && !world.isWater(center.x, center.y, 10)) {
       this.#spawnHerd(center, rng.int(...ANIMALS.SHEEP.HERD_SIZE));
     }
 
     world.pondGrid.forEachInRect(cx * size, cy * size, (cx + 1) * size - 1e-6, (cy + 1) * size - 1e-6, (pond) => {
-      if (chunks.coord(pond.position.x) !== cx || chunks.coord(pond.position.y) !== cy) return;
+      if (chunks.coordX(pond.position.x) !== cx || chunks.coordY(pond.position.y) !== cy) return;
       if (this.stockedPonds.has(pond) || pond.fishCapacity === 0) return;
       this.stockedPonds.add(pond);
       Fish.createHerd(pond);
@@ -66,7 +67,7 @@ export class AnimalSpawner {
   #keepWolvesAlive(world) {
     if (world.predators.length >= ANIMALS.WOLF.MIN_POPULATION) return;
     for (let attempt = 0; attempt < 30; attempt++) {
-      const spot = new Vector2(world.rng.range(0, world.size), world.rng.range(0, world.size));
+      const spot = new Vector2(world.rng.range(0, world.width), world.rng.range(0, world.height));
       if (!world.biomes.isForest(spot.x, spot.y) || world.isWater(spot.x, spot.y, 10)) continue;
       if (world.peopleNear(spot, WOLF_MIN_DISTANCE_TO_PEOPLE).length > 0) continue;
       Wolf.createPack(world, spot, 2);

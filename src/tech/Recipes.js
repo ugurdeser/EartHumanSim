@@ -64,7 +64,7 @@ export const Recipes = Object.freeze({
     time: 2 * HOUR,
   }),
   WATER_JAR: new Recipe({
-    technology: Technologies.POTTERY,
+    technology: Technologies.WATER_JAR,
     output: Items.WATER_JAR,
     inputs: [[Items.CLAY, 3]],
     time: 3 * HOUR,

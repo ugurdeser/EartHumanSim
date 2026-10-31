@@ -1,3 +1,5 @@
+import { wrapDelta } from '../../core/Planet.js';
+
 /** Haritanın kare bir parçası ve içindeki bitkiler. */
 export class Chunk {
   constructor(cx, cy, size, key) {
@@ -61,7 +63,7 @@ export class Chunk {
   }
 
   distanceTo(position) {
-    const dx = Math.max(this.minX - position.x, 0, position.x - this.maxX);
+    const dx = Math.max(0, Math.abs(wrapDelta(position.x - this.centerX)) - (this.maxX - this.minX) / 2);
     const dy = Math.max(this.minY - position.y, 0, position.y - this.maxY);
     return Math.hypot(dx, dy);
   }

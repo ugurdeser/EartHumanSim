@@ -11,7 +11,7 @@ export const SHELTER_LEVELS = Object.freeze([
     level: 1,
     name: 'Dal kulübe',
     materials: [[Items.BRANCH, 6]],
-    technology: null,
+    technology: Technologies.BRANCH_HUT,
     minSkill: 0,
     work: 1, // gereken iş miktarı (oturum ≈ 0.3-0.6)
     restQuality: 1.2,

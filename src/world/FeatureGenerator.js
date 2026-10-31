@@ -1,4 +1,4 @@
-import { FEATURES, WORLD } from '../config.js';
+import { FEATURES, PLANET, WORLD } from '../config.js';
 import { lerp } from '../core/MathUtils.js';
 import { Vector2 } from '../core/Vector2.js';
 import { Hillside } from './Hillside.js';
@@ -22,16 +22,21 @@ export class FeatureGenerator {
   }
 
   generate(world, startCenter) {
-    const areaKm2 = (world.size * world.size) / KM2;
     this.#placeRiver(world, startCenter);
-    this.#placePonds(world, Math.round(areaKm2 * FEATURES.POND_DENSITY));
-    for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, Math.round(areaKm2 * type.density));
-    this.#placeHillsides(world, Math.round(areaKm2 * FEATURES.HILLSIDE_DENSITY));
+    this.#placePonds(world, this.#points(world, startCenter, FEATURES.POND_DENSITY));
+    for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, this.#points(world, startCenter, type.density));
+    this.#placeHillsides(world, this.#points(world, startCenter, FEATURES.HILLSIDE_DENSITY));
     this.#guaranteeStartArea(world, startCenter);
   }
 
-  #randomPoint(world, margin) {
-    return new Vector2(this.rng.range(margin, world.size - margin), this.rng.range(margin, world.size - margin));
+  /** Başlangıç çevresinde tam yoğunlukta, gezegenin geri kalanında seyrek noktalar. */
+  #points(world, center, density) {
+    const homeSide = PLANET.HOME_RADIUS * 2;
+    const homeCount = Math.round(((homeSide * homeSide) / KM2) * density);
+    const farCount = Math.round(((world.width * world.height) / KM2) * density * PLANET.SPARSE);
+    const home = Array.from({ length: homeCount }, () => new Vector2(center.x + this.rng.range(-homeSide / 2, homeSide / 2), center.y + this.rng.range(-homeSide / 2, homeSide / 2)));
+    const far = Array.from({ length: farCount }, () => new Vector2(this.rng.range(0, world.width), this.rng.range(0, world.height)));
+    return [...home, ...far];
   }
 
   #pond(position, contaminated) {
@@ -42,15 +47,16 @@ export class FeatureGenerator {
     return new Mine(position.x, position.y, { resource: type.resource, name: type.name, color: type.color });
   }
 
-  /** Haritayı batıdan doğuya kıvrılarak geçen, başlangıç bölgesinin yakınından akan temiz nehir. */
+  /** Başlangıç diyarını batıdan doğuya kıvrılarak geçen, başlangıç bölgesinin yakınından akan temiz nehir. */
   #placeRiver(world, startCenter) {
     const rng = this.rng;
-    const size = world.size;
+    const span = PLANET.HOME_RADIUS;
     const side = rng.chance(0.5) ? 1 : -1;
     const waypoint = startCenter.clone();
     waypoint.y += side * rng.range(...FEATURES.RIVER_WAYPOINT);
-    const end = new Vector2(size, rng.range(size * 0.2, size * 0.8));
-    const point = new Vector2(0, rng.range(size * 0.2, size * 0.8));
+    const reach = () => startCenter.y + rng.range(-span * 0.6, span * 0.6);
+    const end = new Vector2(startCenter.x + span, reach());
+    const point = new Vector2(startCenter.x - span, reach());
     const phase = rng.range(0, Math.PI * 2);
     const [narrow, wide] = FEATURES.RIVER_RADIUS;
     let index = 0;
@@ -58,7 +64,7 @@ export class FeatureGenerator {
 
     for (const target of [waypoint, end]) {
       while (point.distanceTo(target) > wide) {
-        const radius = lerp(narrow, wide, point.x / size);
+        const radius = lerp(narrow, wide, (point.x - startCenter.x + span) / (span * 2));
         const fishy = index % FEATURES.RIVER_FISH_EVERY === 0;
         const named = index % RIVER_LABEL_EVERY === 0;
         index++;
@@ -74,15 +80,14 @@ export class FeatureGenerator {
     }
   }
 
-  #placePonds(world, count) {
-    for (let i = 0; i < count; i++) {
-      world.addPond(this.#pond(this.#randomPoint(world, 200), this.rng.chance(FEATURES.DIRTY_POND_RATIO)));
+  #placePonds(world, points) {
+    for (const p of points) {
+      if (world.isPassable(p.x, p.y)) world.addPond(this.#pond(p, this.rng.chance(FEATURES.DIRTY_POND_RATIO)));
     }
   }
 
-  #placeMines(world, type, count) {
-    for (let i = 0; i < count; i++) {
-      const p = this.#randomPoint(world, 100);
+  #placeMines(world, type, points) {
+    for (const p of points) {
       if (!world.isWater(p.x, p.y, 20)) world.addMine(this.#mine(p, type));
     }
   }
@@ -95,9 +100,8 @@ export class FeatureGenerator {
     });
   }
 
-  #placeHillsides(world, count) {
-    for (let i = 0; i < count; i++) {
-      const p = this.#randomPoint(world, 150);
+  #placeHillsides(world, points) {
+    for (const p of points) {
       if (!world.isWater(p.x, p.y, 60)) world.addHillside(this.#hillside(p));
     }
   }

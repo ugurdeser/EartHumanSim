@@ -17,7 +17,7 @@ export class DeathReport {
     };
     this.groupFood = group ? { name: group.name, count: group.stock.food } : null;
     this.waterDistance = clean ? clean.position.distanceTo(person.position) : null;
-    this.weather = { name: world.weather.current.name, air: world.weather.temperature, felt: person.feltTemperature(world) };
+    this.weather = { name: world.weather.current.name, air: world.weather.temperature + world.climateAt(person.position), felt: person.feltTemperature(world) };
     this.clothes = inventory.bestInsulation;
     this.drive = person.currentDrive?.name ?? null;
     this.activity = person.activity;

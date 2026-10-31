@@ -1,3 +1,5 @@
+import { wrapDelta } from './Planet.js';
+
 export class Vector2 {
   constructor(x = 0, y = 0) {
     this.x = x;
@@ -29,7 +31,7 @@ export class Vector2 {
   }
 
   sub(v) {
-    this.x -= v.x;
+    this.x = wrapDelta(this.x - v.x);
     this.y -= v.y;
     return this;
   }
@@ -54,11 +56,11 @@ export class Vector2 {
   }
 
   distanceTo(v) {
-    return Math.hypot(v.x - this.x, v.y - this.y);
+    return Math.hypot(wrapDelta(v.x - this.x), v.y - this.y);
   }
 
   distanceSqTo(v) {
-    const dx = v.x - this.x;
+    const dx = wrapDelta(v.x - this.x);
     const dy = v.y - this.y;
     return dx * dx + dy * dy;
   }

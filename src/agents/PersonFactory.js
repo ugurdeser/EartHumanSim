@@ -52,6 +52,7 @@ export class PersonFactory {
         energy: this.rng.range(0.7, 1),
       }),
     });
+    person.knowledge.learn(Technologies.BRANCH_HUT); // ilk insanlar sığınak kurmayı bilir: sonraki kuşaklara öğretilir
     if (this.rng.chance(POPULATION.STARTING_TECH_CHANCE)) person.knowledge.learn(this.rng.pick(BASIC_TECHNOLOGIES));
     if (this.rng.chance(POPULATION.FIRE_KNOWLEDGE_CHANCE)) person.knowledge.learn(Technologies.FIRE_MAKING);
     return person;

@@ -1,6 +1,8 @@
 export const COLORS = Object.freeze({
   FRUIT: '#f2a33a',
   WATER: '#3a8fd6',
+  SEA: '#1f5f9e',
+  ICE: '#e6eff5',
   WATER_DIRTY: '#6f6a2e',
   HOME: '#7a5230',
   FIRE: '#ff7a1a',

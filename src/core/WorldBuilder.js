@@ -10,7 +10,6 @@ import { Calendar } from './Calendar.js';
 import { EventLog, LogType } from './EventLog.js';
 import { Random } from './Random.js';
 import { SimulationClock } from './SimulationClock.js';
-import { Vector2 } from './Vector2.js';
 
 /** Simülasyonu (arayüzden bağımsız) kurar: tarayıcı da başsız test de bunu kullanır. */
 export class WorldBuilder {
@@ -22,7 +21,7 @@ export class WorldBuilder {
     const world = new World({ rng, clock, calendar, log });
     world.personFactory = new PersonFactory(rng);
 
-    const start = new Vector2(world.size / 2, world.size / 2);
+    const { start } = world;
     new FeatureGenerator(rng).generate(world, start);
     world.addSystem(new AnimalSpawner(world));
     world.addSystem(new PlantSystem(world));

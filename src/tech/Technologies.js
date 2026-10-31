@@ -36,6 +36,7 @@ export const Technologies = Object.freeze({
     difficulty: 0.4,
     prerequisites: ['fire_making'],
   }),
+  WATER_JAR: new Technology('water_jar', { name: 'Su testisi', skill: 'su testisi yapmayı', difficulty: 0.25, kind: TECHNOLOGY, prerequisites: ['pottery'] }),
   STONE_AXE: new Technology('stone_axe', { name: 'Taş balta', skill: 'taş balta yapmayı', difficulty: 0.2, kind: TECHNOLOGY }),
   FISHING_ROD: new Technology('fishing_rod', { name: 'Olta', skill: 'olta yapmayı', difficulty: 0.3, kind: TECHNOLOGY }),
   SPEAR: new Technology('spear', { name: 'Çakmaktaşı mızrak', skill: 'mızrak yapmayı', difficulty: 0.3, kind: TECHNOLOGY }),
@@ -138,12 +139,13 @@ export const Technologies = Object.freeze({
     practice: 'farming',
   }),
 
+  BRANCH_HUT: new Technology('branch_hut', { name: 'Dal kulübe', skill: 'dal kulübe yapmayı', difficulty: 0.1, kind: TECHNOLOGY }),
   WOODEN_HUT: new Technology('wooden_hut', {
     name: 'Ahşap kulübe',
     kind: TECHNOLOGY,
     skill: 'ahşap kulübe yapmayı',
     difficulty: 0.35,
-    prerequisites: ['stone_axe'],
+    prerequisites: ['branch_hut', 'stone_axe'],
   }),
   STONE_HOUSE: new Technology('stone_house', {
     name: 'Taş ev',
@@ -168,7 +170,7 @@ const T = Technologies;
 /** Arayüzdeki gruplar. Yeni teknoloji eklenince buradaki grubuna da yazılır. */
 export const TECHNOLOGY_GROUPS = Object.freeze([
   ['Temel yaşam', [T.FIRE_MAKING, T.COOKING, T.COMMUNAL_STORAGE, T.POTTERY]],
-  ['Aletler ve silahlar', [T.STONE_AXE, T.FISHING_ROD, T.SPEAR, T.FLINT_KNIFE]],
+  ['Aletler ve silahlar', [T.STONE_AXE, T.FISHING_ROD, T.SPEAR, T.FLINT_KNIFE, T.WATER_JAR]],
   ['Hayvancılık', [T.ANIMAL_CAPTURE, T.ANIMAL_PEN, T.ANIMAL_TAMING, T.SLAUGHTERING]],
   ['Tarım', [T.PLANTING]],
   [
@@ -179,7 +181,7 @@ export const TECHNOLOGY_GROUPS = Object.freeze([
     'Yün işçiliği',
     [T.SPINNING, T.KNITTING, T.WEAVING, T.WOOL_SOCKS, T.WOOL_HAT, T.WOOL_GLOVES, T.WOOL_SWEATER, T.WOOL_TSHIRT, T.WOOL_SHIRT, T.WOOL_PANTS, T.WOOL_BAG],
   ],
-  ['Yapılar', [T.WOODEN_HUT, T.STONE_HOUSE, T.STONE_ROAD]],
+  ['Yapılar', [T.BRANCH_HUT, T.WOODEN_HUT, T.STONE_HOUSE, T.STONE_ROAD]],
 ]);
 
 /** Başlangıçta insanların bilebileceği temel teknikler. */
