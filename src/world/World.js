@@ -290,6 +290,10 @@ export class World {
 
   // ---------- Yaşam döngüsü ----------
 
+  arrive(details) {
+    return this.demography.arrive(details);
+  }
+
   birth(mother, father) {
     return this.demography.birth(mother, father);
   }

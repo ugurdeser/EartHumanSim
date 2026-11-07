@@ -9,11 +9,6 @@ export class IdleBehavior extends AnimalBehavior {
     this.pause = 0;
   }
 
-  /** Gezindiği alanın yarıçapı. */
-  radiusFor(animal) {
-    return animal.reach(this.radius);
-  }
-
   urgency() {
     return 0.05;
   }
@@ -41,10 +36,10 @@ export class IdleBehavior extends AnimalBehavior {
       this.pause -= dt;
       return false;
     }
-    this.target ??= world.randomPointNear(animal.anchor, this.radiusFor(animal));
+    this.target ??= animal.roamPoint(world, this.radius);
     if (animal.species.glides) {
       animal.position.set(this.target.x, this.target.y); // süzülme uykuda geçti
-      this.target = world.randomPointNear(animal.anchor, this.radiusFor(animal));
+      this.target = animal.roamPoint(world, this.radius);
       return false;
     }
     if (animal.moveTowards(this.target, animal.walkSpeed, dt, world)) {

@@ -107,9 +107,9 @@ export const DOMESTICATION = Object.freeze({
 
 export const PEN = Object.freeze({
   OFFSET: 18, // yuvadan uzaklığı (m)
-  RADIUS: 12,
+  HALF_SIZE: 12, // kare ağılın kenarının yarısı (m)
+  POST_SPACING: 2.5, // çit noktaları arası (m)
   CAPACITY: 12,
-  GRAZE_RANGE: 250, // gündüz sürünün otlayabileceği uzaklık
   GUARD_RANGE: 200, // bu kadar yakında insan varken yırtıcı sürüye yaklaşmaz
   SAFE_DISTANCE: 45, // gece bu kadar yakındaki hayvana kurt ulaşamaz
   BUILD_TIME: 4 * HOUR,

@@ -55,6 +55,7 @@ export const POPULATION = Object.freeze({
   FEMALES: 5,
   START_AGE: [18, 35],
   SPAWN_RADIUS: 400,
+  MAX_ADDED_AGE: 80, // arayüzden eklenen karakterin en büyük yaşı
   STARTING_TECH_CHANCE: 0.5, // başlangıçta bir temel tekniği bilme olasılığı
   FIRE_KNOWLEDGE_CHANCE: 0.5, // başlangıçta ateş yakmayı bilme olasılığı
 });

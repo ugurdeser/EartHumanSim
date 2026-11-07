@@ -15,7 +15,7 @@ export class Herd {
     this.center = center.clone();
     this.maxSize = maxSize;
     this.roams = roams; // false: merkez yerinden oynamaz (ör. göletteki balıklar)
-    this.tether = tether; // varsa ağıl: gündüz çevresinde otlar, gece döner
+    this.tether = tether; // varsa ağıl: sürünün merkezi ağıldır
     this.target = null;
     this.alarmedAt = -Infinity;
     this.members = new Set();
@@ -66,24 +66,16 @@ export class Herd {
     const dt = this.lastUpdate === null ? 0 : world.now - this.lastUpdate;
     this.lastUpdate = world.now;
     if (dt <= 0 || !this.roams) return;
-    if (this.tether) return this.#tended(world, dt);
+    if (this.tether) return this.#moveCenter(this.tether.position, dt);
     if (!this.target || this.center.distanceTo(this.target) < 5) this.target = this.#nextPasture(world);
     this.#moveCenter(this.target, dt);
   }
 
-  /** Ağıl sürüsü: gündüz ağılın çevresindeki otlakta, gece ağılda. */
-  #tended(world, dt) {
-    const { position, grazeRange } = this.tether;
-    if (world.clock.isNight) return this.#moveCenter(position, dt);
-    if (!this.target || this.center.distanceTo(this.target) < 5) this.target = this.#nextPasture(world, position, grazeRange);
-    this.#moveCenter(this.target, dt);
-  }
-
-  #nextPasture(world, around = this.center, radius = DRIFT_RADIUS) {
+  #nextPasture(world) {
     let best = null;
     let bestForage = -1;
     for (let i = 0; i < DRIFT_SAMPLES; i++) {
-      const point = world.randomPointNear(around, radius);
+      const point = world.randomPointNear(this.center, DRIFT_RADIUS);
       const forage = world.forageAt(point);
       if (forage > bestForage) {
         best = point;

@@ -2,6 +2,7 @@ import { COLORS, FIRE, ROAD } from '../config.js';
 import { DotPainter } from './DotPainter.js';
 
 const LABEL_ZOOM = 0.5;
+const FENCE_POST = 0.4; // m: çit noktasının yarıçapı
 const POND_REACH = 131;
 
 /** Yollar, göletler, madenler ve yuvalar (yalnızca görünür olanlar). */
@@ -61,8 +62,9 @@ export class FeatureLayer {
 
   #drawPen(ctx, camera, pen) {
     const { x, y } = pen.position;
-    DotPainter.ring(ctx, x, y, Math.max(pen.radius, camera.pixels(5)), COLORS.PEN, camera.pixels(1.5));
-    if (camera.zoom >= LABEL_ZOOM) this.#label(ctx, camera, `Ağıl · ${pen.herd.size}`, x, y - Math.max(pen.radius, camera.pixels(5)) - camera.pixels(6), COLORS.PEN);
+    const post = Math.max(FENCE_POST, camera.pixels(1));
+    DotPainter.batch(ctx, pen.fence, COLORS.PEN, () => post);
+    if (camera.zoom >= LABEL_ZOOM) this.#label(ctx, camera, `Ağıl · ${pen.herd.size}`, x, y - pen.halfSize - camera.pixels(6), COLORS.PEN);
   }
 
   #drawHome(ctx, camera, home) {

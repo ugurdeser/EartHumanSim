@@ -64,6 +64,17 @@ export class HerdAnimal extends Animal {
     return animal;
   }
 
+  /** Ağıla elden verilen evcil yetişkin (cinsiyet verilmezse rastgele). */
+  static createTamed(pen, rng, sex) {
+    const { x, y } = pen.randomPointInside(rng);
+    const animal = this.createWild(x, y, rng);
+    animal.sex = sex ?? animal.sex;
+    animal.lifecycle.ageYears = Math.max(this.SPECIES.life.adultAge, animal.ageYears);
+    animal.domestication = new Domestication(pen, { tamed: true });
+    pen.herd.add(animal);
+    return animal;
+  }
+
   /** Bu türe uygun boş bir sürü. */
   static createHerd(center) {
     const species = this.SPECIES;
@@ -148,6 +159,12 @@ export class HerdAnimal extends Animal {
   /** Annesi yaşıyor ve aynı sürüdeyse (yakalanan yavru annesinden ayrılır). */
   get followsMother() {
     return Boolean(this.mother?.alive) && this.mother.herd === this.herd;
+  }
+
+  /** Gezilecek bir nokta: ağıldaki hayvan için çitin içi, değilse `radius` kadar çevresi. */
+  roamPoint(world, radius) {
+    const pen = this.domestication?.pen;
+    return pen ? pen.randomPointInside(world.rng) : world.randomPointNear(this.anchor, this.reach(radius));
   }
 
   /** Davranışların etrafında dolaştığı nokta: yavru için anne, değilse sürünün merkezi. */

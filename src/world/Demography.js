@@ -1,5 +1,6 @@
-import { FAMILY } from '../config.js';
+import { FAMILY, POPULATION } from '../config.js';
 import { DeathReport } from '../agents/DeathReport.js';
+import { Sex } from '../agents/Sex.js';
 import { LogType } from '../core/EventLog.js';
 import { Vector2 } from '../core/Vector2.js';
 import { Kinship } from '../society/Kinship.js';
@@ -9,6 +10,20 @@ import { Home } from './Home.js';
 export class Demography {
   constructor(world) {
     this.world = world;
+  }
+
+  /** Başlangıç bölgesine yeni bir yetişkin gelir ve kendi yuvasını kurar; verilmeyen özellikler rastgeledir. */
+  arrive({ sex, ...details } = {}) {
+    const { world } = this;
+    let position;
+    do position = world.randomPointNear(world.start, POPULATION.SPAWN_RADIUS);
+    while (world.isWater(position.x, position.y, 5));
+    const home = world.addHome(new Home(position.x, position.y));
+    const person = world.personFactory.createAdult(sex ?? (world.rng.chance(0.5) ? Sex.MALE : Sex.FEMALE), position, home, details);
+    world.addPerson(person);
+    const known = person.knowledge.technologies.map((t) => t.skill).join(', ');
+    world.log.personal([person], `📍 ${person.age} yaşında bu topraklara geldi${known ? ` (${known} biliyor)` : ''}`, LogType.LIFE);
+    return person;
   }
 
   birth(mother, father) {

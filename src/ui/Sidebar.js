@@ -11,7 +11,7 @@ export class Sidebar {
     this.world = game.world;
     this.timeControls = new TimeControls(game);
     this.tabs = [
-      { id: 'population', view: new PopulationList(game.world, game.selection), label: () => `Nüfus (${this.world.people.length})` },
+      { id: 'population', view: new PopulationList(game.world, game.selection, (details) => game.addPerson(details)), label: () => `Nüfus (${this.world.people.length})` },
       { id: 'families', view: new FamilyPanel(game.world, game.selection, game.camera), label: () => `Aileler (${this.world.social.families.families.length})` },
       { id: 'communities', view: new CommunityPanel(game.world, game.selection), label: () => `Topluluklar (${this.world.social.groups.groups.length})` },
       { id: 'events', view: new EventLogView(game.log), label: () => 'Olaylar' },

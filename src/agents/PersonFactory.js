@@ -34,14 +34,15 @@ export class PersonFactory {
     return mother.family?.surname ?? father?.surname ?? mother.surname;
   }
 
-  createAdult(sex, position, home) {
+  /** Verilen ad, soyad ve yaş kullanılır; verilmeyenler rastgele seçilir. */
+  createAdult(sex, position, home, { name, surname, age } = {}) {
     const [minAge, maxAge] = POPULATION.START_AGE;
     const person = new Person({
-      name: this.#nextName(sex),
-      surname: this.#pickUnique(SURNAMES, this.usedSurnames),
+      name: name ?? this.#nextName(sex),
+      surname: surname ?? this.#pickUnique(SURNAMES, this.usedSurnames),
       sex,
       position,
-      ageYears: this.rng.range(minAge, maxAge),
+      ageYears: age ?? this.rng.range(minAge, maxAge),
       personality: Personality.random(this.rng),
       traits: Traits.random(this.rng),
       home,

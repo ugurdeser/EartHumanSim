@@ -1,4 +1,5 @@
 import { el } from './dom.js';
+import { PersonForm } from './PersonForm.js';
 
 const TABS = [
   { id: 'living', label: 'Yaşayanlar' },
@@ -7,7 +8,7 @@ const TABS = [
 
 /** Nüfus listesi: yaşayanlar ve ölenler (ölüye tıklayınca hayat hikâyesi açılır). */
 export class PopulationList {
-  constructor(world, selection) {
+  constructor(world, selection, onAddPerson) {
     this.world = world;
     this.selection = selection;
     this.activeTab = TABS[0].id;
@@ -16,7 +17,8 @@ export class PopulationList {
     this.tabButtons = TABS.map((tab) => el('button', { 'data-tab': tab.id, onClick: () => this.#showTab(tab.id) }));
     // Satırlar sık yenilendiği için tıklama, liste üzerinden (event delegation) yakalanır.
     this.list = el('ul', { class: 'population', onMouseDown: (e) => this.#onPick(e) });
-    this.root = el('div', { class: 'tab-view' }, el('nav', { class: 'sub-tabs' }, this.tabButtons), this.list, this.summary);
+    this.form = new PersonForm(onAddPerson);
+    this.root = el('div', { class: 'tab-view' }, el('nav', { class: 'sub-tabs' }, this.tabButtons), this.list, this.summary, this.form.root);
     this.#showTab(this.activeTab);
   }
 
@@ -44,7 +46,8 @@ export class PopulationList {
     this.tabButtons[1].textContent = `Ölenler (${deceased.length})`;
 
     if (this.activeTab === 'living') {
-      this.list.replaceChildren(...people.map((person) => this.#livingRow(person)));
+      if (people.length === 0) this.list.replaceChildren(el('li', { class: 'hint', text: 'Henüz kimse yok. Aşağıdan karakter ekleyin.' }));
+      else this.list.replaceChildren(...people.map((person) => this.#livingRow(person)));
       return;
     }
     // Ölüler değişmez; liste yalnızca yeni ölüm ya da seçim değişince yeniden çizilir.

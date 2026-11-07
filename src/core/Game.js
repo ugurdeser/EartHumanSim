@@ -22,7 +22,7 @@ const START_VIEW_METERS = 1500;
 /** Uygulamanın kompozisyon kökü ve ana döngüsü. */
 export class Game {
   constructor({ canvas, sidebar, seed }) {
-    const { rng, clock, calendar, log, world, start } = WorldBuilder.build(seed);
+    const { rng, clock, calendar, log, world, start } = WorldBuilder.build(seed, { settled: false });
     Object.assign(this, { rng, clock, calendar, log, world });
 
     this.fastForward = new FastForward(clock, world);
@@ -73,6 +73,15 @@ export class Game {
   /** Yüksek hızlarda adım büyür ki saniye başına adım sayısı makul kalsın. */
   get stepSize() {
     return clamp((this.clock.timeScale * SIM.REAL_TO_SIM) / SIM.STEPS_PER_SECOND, SIM.MIN_STEP, SIM.MAX_STEP);
+  }
+
+  // ---------- Nüfus ----------
+
+  /** Dünyaya yeni bir karakter ekler; çevresi hemen etkinleşir. */
+  addPerson(details) {
+    const person = this.world.arrive(details);
+    this.world.activeTimer = 0;
+    return person;
   }
 
   // ---------- Döngü ----------

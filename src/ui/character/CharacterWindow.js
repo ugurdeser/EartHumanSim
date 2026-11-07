@@ -8,6 +8,7 @@ import { HomeView } from './HomeView.js';
 import { InfoView } from './InfoView.js';
 import { InventoryView } from './InventoryView.js';
 import { NeedsView } from './NeedsView.js';
+import { PetsView } from './PetsView.js';
 import { RelationsView } from './RelationsView.js';
 
 const TABS = [
@@ -17,6 +18,7 @@ const TABS = [
   { id: 'capabilities', label: 'Kabiliyetler' },
   { id: 'relations', label: 'İlişkiler' },
   { id: 'inventory', label: 'Envanter' },
+  { id: 'pets', label: 'Evcil Hayvanlar' },
   { id: 'info', label: 'Bilgiler' },
   { id: 'death', label: 'Ölüm Raporu' }, // yalnızca ölüler için görünür
 ];
@@ -77,6 +79,7 @@ export class CharacterWindow {
       inventory: new InventoryView(person),
       info: new InfoView(person, this.world),
       relations: new RelationsView(person, this.world),
+      pets: new PetsView(person, this.world, this.selection),
       home: new HomeView(() => person.home),
       death: new DeathReportView(person),
     };

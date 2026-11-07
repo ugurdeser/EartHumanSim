@@ -24,11 +24,10 @@ export class GrazeBehavior extends AnimalBehavior {
   }
 
   #bestSpot(animal, world) {
-    const center = animal.anchor;
     let best = null;
     let bestForage = -1;
     for (let i = 0; i < SPOT_SAMPLES; i++) {
-      const point = world.randomPointNear(center, animal.reach(this.radius));
+      const point = animal.roamPoint(world, this.radius);
       if (world.isWater(point.x, point.y, 1)) continue;
       const forage = world.forageAt(point);
       if (forage > bestForage) {
