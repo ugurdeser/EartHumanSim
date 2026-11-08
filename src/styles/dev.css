@@ -1,3 +1,125 @@
+/* ---------- Ayarlar ve FPS ---------- */
+
+.char-window.settings-window {
+  top: 48px;
+  left: 12px;
+  right: auto;
+  width: 300px;
+}
+
+.settings-window h4 {
+  margin: 0 0 4px;
+  color: #9aa08f;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.settings-window .hint {
+  margin: 6px 0 8px;
+}
+
+.fps-meter {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 8px;
+  background: rgba(20, 24, 18, 0.82);
+  border-radius: 6px;
+  font: 12px ui-monospace, monospace;
+  pointer-events: none;
+}
+
+.fps-meter.hidden {
+  display: none;
+}
+
+/* ---------- Hava katmanı göstergesi ---------- */
+
+.overlay-legend {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  padding: 6px 8px;
+  background: rgba(20, 24, 18, 0.82);
+  border-radius: 8px;
+  font-size: 11px;
+  pointer-events: none;
+}
+
+.overlay-legend.hidden {
+  display: none;
+}
+
+.overlay-title {
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.overlay-scale {
+  display: flex;
+}
+
+.overlay-scale span {
+  min-width: 34px;
+  padding: 2px 0;
+  text-align: center;
+  color: #111;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.settings-window .settings-gap {
+  margin-top: 12px;
+}
+
+/* ---------- Hava haritası düğmesi ve fare bilgisi ---------- */
+
+.weather-map-control {
+  position: relative;
+}
+
+.weather-map-panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  display: grid;
+  gap: 3px;
+  min-width: 170px;
+  padding: 6px;
+  background: rgba(34, 38, 31, 0.96);
+  border: 1px solid #4a5540;
+  border-radius: 8px;
+  z-index: 5;
+}
+
+.weather-map-panel.hidden {
+  display: none;
+}
+
+.weather-map-panel button {
+  text-align: left;
+  padding: 5px 10px;
+}
+
+.weather-probe {
+  position: absolute;
+  padding: 6px 9px;
+  background: rgba(20, 24, 18, 0.9);
+  border: 1px solid #4a5540;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.55;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 6;
+}
+
+.weather-probe.hidden {
+  display: none;
+}
+
 /* ---------- Geliştirici paneli ---------- */
 
 .char-window.dev-panel {

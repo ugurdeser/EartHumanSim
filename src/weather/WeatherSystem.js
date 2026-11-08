@@ -1,166 +1,137 @@
-import { DAY, HOUR, WEATHER } from '../config.js';
+import { ATMOSPHERE } from '../config.js';
+import { Sun } from './atmosphere/Sun.js';
 import { LogType } from '../core/EventLog.js';
-import { clamp01, lerp } from '../core/MathUtils.js';
-import { Calendar } from '../core/Calendar.js';
+import { wrapX } from '../core/Planet.js';
+import { Atmosphere } from './atmosphere/Atmosphere.js';
+import { SystemKind } from './atmosphere/PressureSystems.js';
+import { LocalWeather } from './LocalWeather.js';
 import { WeatherType } from './WeatherType.js';
 
-const RAMP = 1 * HOUR; // hava bu sürede yavaş yavaş başlar ve diner
-const MOISTURE_MEMORY = 30 * DAY;
-const NORMAL_MOISTURE = 0.15; // ortalama bir ayın yağışı
-const SEVERE_URGE = 0.5; // bundan güçlü hava "sert" sayılır
+const ALERTS = new Set([WeatherType.BLIZZARD, WeatherType.STORM, WeatherType.GALE]);
 
 /**
- * Tüm dünya için tek hava. Sıradaki hava da bellidir (`next`): insanlar gökyüzüne bakıp
- * yaklaşan sert havayı görür. Yağış kar örtüsünü ve toprağın nemini belirler.
+ * Gezegenin havası: atmosfer modelinin üstünde yerel sorgular.
+ * Her yerin havası ayrıdır; `at(konum)` o yerin havasını, `temperatureAt(konum)` o noktanın
+ * yüksekliğine göre sıcaklığını verir.
  */
 export class WeatherSystem {
-  constructor({ rng, calendar, log }) {
-    this.rng = rng;
+  /** Model kurulur ama çalışmaz: `start()` (ya da parça parça `warmUp()`) bir yıl önceden ısıtır. */
+  constructor({ calendar, log, terrain, width, height, seed, sunXAt, planet }) {
     this.calendar = calendar;
     this.log = log;
-    this.current = WeatherType.CLEAR;
-    this.next = this.#roll(0);
-    this.startedAt = 0;
-    this.until = this.#durationOf(this.current);
-    this.snowCover = 0; // 0..1
-    this.moisture = NORMAL_MOISTURE;
-    this.locked = false; // geliştirici paneli: hava değişmez
+    this.terrain = terrain;
+    this.planet = planet;
+    this.atmosphere = new Atmosphere({ width, height, terrain, seed, sunXAt, climate: WeatherSystem.#climateOf(planet) });
+    this.cells = new Array(this.atmosphere.grid.size).fill(null);
+    this.paused = false; // geliştirici paneli: hava olduğu gibi kalır
+    this.alerted = new Map(); // hücre → son uyarılan hava (her kötü havada bir kez yazılır)
   }
 
-  #weightedPick(weights) {
-    const entries = Object.entries(weights);
-    let roll = this.rng.next() * entries.reduce((sum, [, weight]) => sum + weight, 0);
-    for (const [id, weight] of entries) {
-      roll -= weight;
-      if (roll <= 0) return WeatherType[id];
+  /** Gezegen ayarlarından modelin iklim değerleri. */
+  static #climateOf(planet) {
+    return {
+      solarConstant: ATMOSPHERE.SOLAR_CONSTANT * planet.solar,
+      obliquity: planet.obliquity,
+      peakAltitude: planet.peakAltitude,
+      evaporationTime: ATMOSPHERE.EVAPORATION_TIME * planet.evaporation,
+      stormRate: planet.stormRate,
+    };
+  }
+
+  start() {
+    this.atmosphere.start(this.calendar.now);
+  }
+
+  /** Isınmanın parça parça hâli: ilerlemeyi (0..1) verir. */
+  warmUp() {
+    return this.atmosphere.warmUp(this.calendar.now);
+  }
+
+  /** Güneşin şu an dik geldiği enlem (radyan). */
+  get declination() {
+    return Sun.declination(this.calendar.now, this.planet.obliquity);
+  }
+
+  get grid() {
+    return this.atmosphere.grid;
+  }
+
+  /** Hücrenin havası (önbellekte; model ilerleyince tazelenir). */
+  atCell(cell) {
+    this.cells[cell] ??= new LocalWeather(this.atmosphere, cell, (seconds) => this.#upwind(cell, seconds));
+    return this.cells[cell].refresh();
+  }
+
+  at(position) {
+    return this.atCell(this.grid.cellAt(position.x, position.y));
+  }
+
+  /** En yüksek dağın yüksekliği (m, Dünya ölçeği): arazinin 0..1 yükseltisi bununla çarpılır. */
+  get peakAltitude() {
+    return this.planet.peakAltitude;
+  }
+
+  /** Noktanın gerçek yüksekliğine göre hava sıcaklığı (komşu hücreler harmanlanır). */
+  temperatureAt(position) {
+    const { grid, state } = this.atmosphere;
+    const altitude = this.terrain.elevationAt(position.x, position.y) * this.peakAltitude;
+    return grid.sample(state.theta, position.x, position.y) - ATMOSPHERE.LAPSE_RATE * altitude;
+  }
+
+  /** Açıkta hissedilen: rüzgâr soğuğu eklenir. */
+  exposedTemperatureAt(position) {
+    return LocalWeather.windChill(this.temperatureAt(position), this.at(position).wind);
+  }
+
+  /** Rüzgârın `seconds` sonra buraya getireceği havanın hücresi. */
+  #upwind(cell, seconds) {
+    const { grid, state } = this.atmosphere;
+    const j = Math.floor(cell / grid.cols);
+    const x = grid.xOf(cell % grid.cols) - (state.windEast[cell] * seconds) / (grid.scale * Math.max(0.25, grid.cosLat[j]));
+    const y = grid.yOf(j) + (state.windNorth[cell] * seconds) / grid.scale;
+    return this.atCell(grid.cellAt(wrapX(x), Math.min(grid.height - 1, Math.max(0, y))));
+  }
+
+  /** `watched`: kötü hava başlayınca günlüğe yazılacak yerler (yuvalar). */
+  update(watched = []) {
+    if (this.paused) {
+      this.atmosphere.time = Math.max(this.atmosphere.time, this.calendar.now - ATMOSPHERE.STEP);
+      return;
     }
-    return WeatherType.CLEAR;
+    const version = this.atmosphere.version;
+    this.atmosphere.update(this.calendar.now);
+    if (version !== this.atmosphere.version) this.#alert(watched);
   }
 
-  /** `time` anının mevsimine göre sıradaki hava. */
-  #roll(time) {
-    return this.#weightedPick(Calendar.seasonAt(time).weather);
-  }
-
-  #durationOf(weather) {
-    const [min, max] = weather.duration;
-    return this.rng.range(min, max) * HOUR;
-  }
-
-  /** Havanın o anki gücü (0..1): başlarken ve dinerken zayıftır. */
-  get intensity() {
-    const now = this.calendar.now;
-    return clamp01(Math.min((now - this.startedAt) / RAMP, (this.until - now) / RAMP));
-  }
-
-  /** Hava sıcaklığı: mevsim + gün içi değişim + bulut/yağış. */
-  get temperature() {
-    return this.calendar.temperature - this.current.cooling * this.intensity;
-  }
-
-  /** Açıkta hissedilen: rüzgâr da eklenir. */
-  get exposedTemperature() {
-    return this.temperature - this.current.windChill * this.intensity;
-  }
-
-  get precipitation() {
-    return this.current.precipitation * this.intensity;
-  }
-
-  /** Hareket hızı çarpanı: kötü hava ve kar örtüsü yavaşlatır. */
-  get moveFactor() {
-    return lerp(1, this.current.moveFactor, this.intensity) * (1 - this.snowCover * WEATHER.SNOW_SLOWDOWN);
-  }
-
-  /** Kar otu örter: hayvanlar daha zor otlar. */
-  get forageFactor() {
-    return 1 - this.snowCover * WEATHER.SNOW_FORAGE_LOSS;
-  }
-
-  /** Kar yerdeki yiyeceği örter: ancak daha yakından fark edilir. */
-  get sightFactor() {
-    return 1 - this.snowCover * WEATHER.SNOW_SIGHT_LOSS;
-  }
-
-  /** Bitki büyümesi: yağış hızlandırır, kuraklık yavaşlatır, kar durdurur. */
-  get growthFactor() {
-    const wetness = clamp01(this.moisture / (NORMAL_MOISTURE * 2));
-    return lerp(WEATHER.DRY_GROWTH, WEATHER.WET_GROWTH, wetness) * (1 - this.snowCover);
-  }
-
-  /** Açıktaki insanın sığınma isteği; sert hava yaklaşırken de eve dönülür. */
-  get shelterUrge() {
-    const now = this.current.shelterUrge * this.intensity;
-    const closing = this.until - this.calendar.now < WEATHER.FORECAST;
-    return Math.max(now, closing ? this.next.shelterUrge * WEATHER.FORECAST_URGE : 0);
-  }
-
-  get isSevere() {
-    return this.shelterUrge >= SEVERE_URGE;
-  }
-
-  /** Şimdiki havanın bitmesine kalan süre (saniye; sabitlenmişse Infinity). */
-  get remaining() {
-    return this.locked ? Infinity : Math.max(0, this.until - this.calendar.now);
+  #alert(watched) {
+    for (const position of watched) {
+      const local = this.at(position);
+      const before = this.alerted.get(local.cell);
+      if (ALERTS.has(local.current) && before !== local.current) this.log.add(`${local.current.icon} ${local.current.name} başladı`, LogType.DANGER);
+      this.alerted.set(local.cell, ALERTS.has(local.current) ? local.current : null);
+    }
   }
 
   // ---------- Geliştirici paneli ----------
 
-  /** Havayı hemen, tam güçte başlatır; `hours` verilmezse kendi süresi kadar sürer. */
-  force(weather, hours = null) {
-    const now = this.calendar.now;
-    this.current = weather;
-    this.startedAt = now - RAMP;
-    this.until = now + (hours === null ? this.#durationOf(weather) : hours * HOUR);
-    this.next = this.#roll(this.until);
+  /** Noktada yeni bir basınç sistemi doğurur (alçak basınç, yüksek basınç ya da kasırga). */
+  spawnSystem(kind, position) {
+    this.atmosphere.systems.spawnAt(kind, position.x, position.y);
   }
 
-  setNext(weather) {
-    this.next = weather;
+  setSnowAt(position, cover) {
+    const cell = this.grid.cellAt(position.x, position.y);
+    this.atmosphere.state.snow[cell] = -Math.log(Math.max(1e-3, 1 - Math.min(0.999, cover))) * ATMOSPHERE.SNOW_DEPTH_SCALE;
+    this.atmosphere.version++;
   }
 
-  /** Sabitlenen hava süresi dolsa da değişmez; çözülünce kalan süre yeniden belirlenir. */
-  setLocked(locked) {
-    if (this.locked === locked) return;
-    this.locked = locked;
-    if (!locked) this.until = Math.max(this.until, this.calendar.now + this.#durationOf(this.current));
+  setSoilAt(position, wetness) {
+    const cell = this.grid.cellAt(position.x, position.y);
+    this.atmosphere.state.soil[cell] = wetness * ATMOSPHERE.SOIL_CAPACITY;
+    this.atmosphere.version++;
   }
 
-  setSnowCover(value) {
-    this.snowCover = clamp01(value);
-  }
-
-  setMoisture(value) {
-    this.moisture = Math.max(0, value);
-  }
-
-  update(dt) {
-    if (this.locked) this.until = Math.max(this.until, this.calendar.now + RAMP);
-    if (this.calendar.now >= this.until) this.#change();
-    this.#updateGround(dt);
-  }
-
-  #change() {
-    const now = this.calendar.now;
-    this.current = this.next;
-    this.startedAt = now;
-    this.until = now + this.#durationOf(this.current);
-    this.next = this.#roll(this.until);
-    if (this.current === WeatherType.BLIZZARD) this.log.add(`${this.current.icon} Tipi başladı`, LogType.DANGER);
-  }
-
-  #updateGround(dt) {
-    const intensity = this.intensity;
-    this.moisture += ((this.precipitation - this.moisture) * dt) / MOISTURE_MEMORY;
-    const fallen = (this.current.snowfall * intensity * dt) / HOUR;
-    const melted = (Math.max(0, this.temperature) * dt) / WEATHER.SNOW_MELT_TIME;
-    const settled = dt / WEATHER.SNOW_SETTLE_TIME;
-    this.snowCover = clamp01(this.snowCover + fallen - melted - settled);
-  }
-
-  /** Arayüz için: "🌧️ Yağmurlu · ❄ kar %40" */
-  describe() {
-    const snow = this.snowCover >= 0.05 ? ` · kar %${Math.round(this.snowCover * 100)}` : '';
-    return `${this.current.icon} ${this.current.name}${snow}`;
+  static get systemKinds() {
+    return SystemKind;
   }
 }

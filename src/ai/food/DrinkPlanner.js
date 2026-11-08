@@ -7,7 +7,7 @@ import { SequenceAction } from '../../actions/SequenceAction.js';
 
 const JAR_SIPS = 4; // dolu testinin kaç içimlik suyu var
 
-/** Su içmek: testiden, gölet ya da nehirden. */
+/** Su içmek: testiden ya da göletten. */
 export class DrinkPlanner {
   static drink(person, world) {
     if (person.inventory.has(Items.WATER)) return DrinkPlanner.sip();

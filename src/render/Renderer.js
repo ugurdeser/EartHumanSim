@@ -1,4 +1,6 @@
-import { latitudeOf, wrapDelta, wrapX } from '../core/Planet.js';
+import { clamp01 } from '../core/MathUtils.js';
+import { latitudeOf, wrapDelta } from '../core/Planet.js';
+import { Sun } from '../weather/atmosphere/Sun.js'; // güneşin yüksekliği (gece karanlığı)
 import { AgentLayer } from './AgentLayer.js';
 import { Camera } from './Camera.js';
 import { CloudLayer } from './CloudLayer.js';
@@ -7,13 +9,17 @@ import { CloudField } from './CloudField.js';
 import { FeatureLayer } from './FeatureLayer.js';
 import { GlobeLayer } from './GlobeLayer.js';
 import { Hillshade } from './Hillshade.js';
+import { OverlayLayer } from './OverlayLayer.js';
 import { OverviewLayer } from './OverviewLayer.js';
+import { Painters } from './painters/Painters.js';
 import { PlantLayer } from './PlantLayer.js';
 import { ReliefLayer } from './ReliefLayer.js';
 import { SeaLayer } from './SeaLayer.js';
 import { SpaceLayer } from './SpaceLayer.js';
 import { SnowLayer } from './SnowLayer.js';
 import { WeatherEffects } from './WeatherEffects.js';
+import { WeatherMaps } from './WeatherMaps.js';
+import { WindLayer } from './WindLayer.js';
 
 const NIGHT_MAX_ALPHA = 0.45;
 const SPACE_COLOR = '#05070f';
@@ -21,67 +27,73 @@ const SCENE_MARGIN = 1.3; // ara resim ekrandan bu kadar geniş: kenarlar kavisl
 const CELL_COLS = 28; // kavis ekranda bu kadar küçük parçaya bölünerek uygulanır
 const CELL_ROWS = 18;
 const HIGH_LATITUDE = 0.75; // rad: bundan yukarıda boylamlar ara resme sığmaz, taban küre görünür
+const DAY_FROM = Math.sin((3 * Math.PI) / 180); // güneş ufkun 3° üstündeyse tam gündüz
+const NIGHT_FROM = Math.sin((-10 * Math.PI) / 180); // 10° altındaysa tam gece
 
 /**
  * Katmanları sırayla çizer: uzak görünüm → dağ gölgeleri → parça resimleri → tek tek bitkiler →
- * kar → deniz → göl/maden/yuva/yol → canlılar → bulutlar → hava → gece. Her katman kendi zoom aralığını bilir.
+ * kar → deniz → göl/maden/yuva/yol → canlılar → bulutlar → hava katmanı → rüzgâr → yağış → gece.
+ * Her katman kendi zoom aralığını bilir. Gece, baktığın yerde güneşin ne kadar alçaldığıdır.
+ * Uzaktan bakış yerdurağan uydu gibidir: kamera gezegenle döner, kara sabit kalır; güneş, yıldızlar,
+ * gece-gündüz çizgisi ve bulutlar üzerinden akar.
  * Gezegen her yakınlıkta küredir: uzaktan küre resmi, orta yakınlıkta katmanlar ara resme çizilip
  * küreye bükülür, eğriliğin görünmediği yakınlıkta doğrudan çizilir.
  */
 export class Renderer {
-  constructor(canvas, world, camera, selection) {
+  /** `prepared`: yükleme ekranında önceden hazırlanmış { overview, clouds } (yoksa burada hazırlanır). */
+  constructor(canvas, world, camera, selection, settings, prepared = {}) {
     this.canvas = canvas;
+    this.settings = settings;
     this.ctx = canvas.getContext('2d');
     this.world = world;
     this.camera = camera;
     this.scene = document.createElement('canvas');
     this.sceneCamera = new Camera(world.width, world.height);
-    const overview = new OverviewLayer(world);
-    const clouds = new CloudField();
+    const overview = (prepared.overview ?? new OverviewLayer(world)).prepare();
+    const clouds = prepared.clouds ?? new CloudField();
     const hillshade = new Hillshade(world);
-    this.globe = new GlobeLayer(world, overview, clouds, hillshade);
+    this.maps = new WeatherMaps(world, clouds, settings);
+    const painters = Painters.create({ world, overview, clouds, hillshade, maps: this.maps, settings });
+    this.paintedBy = painters.kind; // 'gpu' ya da 'cpu'
+    this.globe = new GlobeLayer(world, overview, this.maps, painters.globe);
     this.space = new SpaceLayer(world);
+    this.wind = new WindLayer(world, this.maps);
+    const relief = new ReliefLayer(world, painters.relief);
+    const cloudLayer = new CloudLayer(world, this.maps, painters.cloud);
+    this.optional = new Map([
+      [relief, 'relief'],
+      [cloudLayer, 'clouds'],
+    ]); // katman → onu açıp kapatan ayar
     this.layers = [
       overview,
-      new ReliefLayer(world, hillshade),
+      relief,
       new ChunkLayer(world),
       new PlantLayer(world),
-      new SnowLayer(world),
-      new SeaLayer(world),
+      new SnowLayer(world, this.maps),
+      new SeaLayer(world, painters.sea),
       new FeatureLayer(world),
       new AgentLayer(world, selection),
-      new CloudLayer(world, clouds),
+      cloudLayer,
+      new OverlayLayer(world, this.maps),
+      this.wind,
     ];
     this.weatherEffects = new WeatherEffects(world);
-    this.spin = null; // küredeyken: { offset: güneşe göre bakış, x: son boylam }
     this.dpr = 1;
     this.resize();
+    settings.onChange((key) => key === 'quality' && this.resize());
   }
 
+  /** Tuval, ekran pikselinin kalite oranı kadarıyla çizilir; tarayıcı ekrana büyütür. */
   resize() {
     const rect = this.canvas.getBoundingClientRect();
-    this.dpr = window.devicePixelRatio || 1;
+    this.dpr = (window.devicePixelRatio || 1) * this.settings.resolution;
     this.canvas.width = Math.round(rect.width * this.dpr);
     this.canvas.height = Math.round(rect.height * this.dpr);
     this.camera.resize(rect.width, rect.height);
   }
 
-  /** Uzaktan bakınca güneş ve yıldızlar sabittir, zaman geçtikçe gezegen kendi ekseninde döner. */
-  #spinPlanet() {
-    const { camera, world } = this;
-    if (!camera.isGlobe) {
-      this.spin = null;
-      return;
-    }
-    if (!this.spin) this.spin = { offset: wrapDelta(camera.x - world.sunX), x: camera.x };
-    this.spin.offset += wrapDelta(camera.x - this.spin.x); // sürükleyen uzayda bakışını değiştirir
-    camera.x = wrapX(world.sunX + this.spin.offset);
-    this.spin.x = camera.x;
-  }
-
   render() {
     const { ctx, camera, dpr } = this;
-    this.#spinPlanet();
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.fillStyle = SPACE_COLOR;
     ctx.fillRect(0, 0, camera.width, camera.height);
@@ -89,13 +101,14 @@ export class Renderer {
     if (camera.isGlobe) {
       this.space.draw(ctx, camera);
       this.globe.draw(ctx, camera);
+      this.wind.drawGlobe(ctx, camera);
       this.space.drawGlare(ctx, camera);
       return; // küre kendi gece-gündüz gölgesini taşır
     } else {
       if (camera.curvature > 0) this.#drawCurved();
       else for (const shift of camera.seamShifts) this.#drawLayers(ctx, camera, dpr, shift);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      this.weatherEffects.draw(ctx, camera.width, camera.height);
+      this.weatherEffects.draw(ctx, camera);
     }
     this.#drawNight();
   }
@@ -185,13 +198,30 @@ export class Renderer {
     ctx.beginPath();
     ctx.rect(0, 0, world.width, world.height);
     ctx.clip();
-    for (const layer of this.layers) layer.draw(ctx, camera);
+    for (const layer of this.layers) {
+      if (this.#isShown(layer)) layer.draw(ctx, camera);
+    }
     ctx.restore();
     camera.x -= shift;
   }
 
+  #isShown(layer) {
+    const key = this.optional.get(layer);
+    return !key || this.settings[key];
+  }
+
+  /** Baktığın yerde güneşin yüksekliğinden karanlık (0: gündüz, 1: gece). */
+  #darkness() {
+    const { camera, world } = this;
+    const latitude = latitudeOf(camera.y);
+    const declination = world.weather.declination;
+    const hourAngle = (2 * Math.PI * wrapDelta(camera.x - world.sunX)) / world.width;
+    const height = Sun.elevation(Math.sin(latitude), Math.cos(latitude), Math.sin(declination), Math.cos(declination), hourAngle);
+    return clamp01((DAY_FROM - height) / (DAY_FROM - NIGHT_FROM));
+  }
+
   #drawNight() {
-    const darkness = this.world.clock.darkness;
+    const darkness = this.#darkness();
     if (darkness <= 0) return;
     const { ctx, camera, dpr } = this;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);

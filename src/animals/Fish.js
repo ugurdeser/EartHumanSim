@@ -15,7 +15,7 @@ const GENES = Object.freeze([
   { id: 'hardiness', name: 'Dayanıklılık' },
 ]);
 
-/** Balık: gölette ya da nehirde sürü halinde yaşar, baharda yumurtlar; oltayla tutulur. */
+/** Balık: gölette sürü halinde yaşar, baharda yumurtlar; oltayla tutulur. */
 export class Fish extends HerdAnimal {
   static SPECIES = Object.freeze({
     id: 'fish',
@@ -61,13 +61,13 @@ export class Fish extends HerdAnimal {
     return herd;
   }
 
-  /** Yaşadığı gölet ya da nehir parçası. */
+  /** Yaşadığı gölet. */
   get pond() {
     return this.herd?.pond;
   }
 
   /** Su, havanın sertliğini hissettirmez. */
   feltTemperature(world) {
-    return world.weather.temperature;
+    return world.weather.temperatureAt(this.position);
   }
 }

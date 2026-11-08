@@ -175,9 +175,9 @@ export class HerdAnimal extends Animal {
 
   // ---------- Çevre ----------
 
-  /** Hava + kendi yünü. */
+  /** Bulunduğu yerin havası (rüzgârla) + kendi yünü. */
   feltTemperature(world) {
-    return world.weather.exposedTemperature + world.climateAt(this.position) + this.products.insulation;
+    return world.weather.exposedTemperatureAt(this.position) + this.products.insulation;
   }
 
   // ---------- Döngü ----------

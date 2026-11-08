@@ -20,7 +20,7 @@ export class ForageBehavior extends AnimalBehavior {
   /** Olduğu yerde besleniyorsa (ör. balık): doyana kadar. */
   restTime(animal, world) {
     if (this.radius > 0) return 0;
-    const rate = Math.min(1, world.calendar.season.growth + 0.2) / this.feedTime - 1 / animal.needs.profile.foodDuration;
+    const rate = Math.min(1, world.calendar.seasonAt(animal.position).growth + 0.2) / this.feedTime - 1 / animal.needs.profile.foodDuration;
     return rate > 0 ? Math.max(0, (0.95 - animal.needs.food) / rate) : 0;
   }
 
@@ -33,7 +33,7 @@ export class ForageBehavior extends AnimalBehavior {
       this.target ??= world.randomPointNear(animal.anchor, animal.reach(this.radius));
       if (animal.moveTowards(this.target, animal.walkSpeed, dt, world)) this.target = null;
     }
-    animal.needs.eat((dt * Math.min(1, world.calendar.season.growth + 0.2)) / this.feedTime);
+    animal.needs.eat((dt * Math.min(1, world.calendar.seasonAt(animal.position).growth + 0.2)) / this.feedTime);
     return animal.needs.food >= 0.95;
   }
 }

@@ -1,4 +1,5 @@
 import { COLORS } from '../config.js';
+import { Calendar } from '../core/Calendar.js';
 import { smoothstep } from '../core/MathUtils.js';
 import { Surface } from '../world/Terrain.js';
 
@@ -10,6 +11,8 @@ const MAX_ZOOM = 0.18; // bundan yakında parça katmanı devralır
 const GRASS_COVER = 0.0192;
 const BUSH_COVER = 0.016;
 const TREE_COVER = 0.0977;
+
+const TROPICS = 0.12; // haritanın yüksekliğinin payı: ekvatorun iki yanında yarıkürelerin renkleri harmanlanır
 
 const hexToRgb = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
 const mix = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
@@ -26,11 +29,25 @@ export class OverviewLayer {
     this.canvas = document.createElement('canvas');
     this.canvas.width = WIDTH;
     this.canvas.height = HEIGHT;
-    this.season = null;
-    this.#computeDensities();
+    this.seasons = null; // [kuzey, güney]: boyandığı mevsimler
+    this.version = 0;
+    this.ready = false;
   }
 
-  #computeDensities() {
+  /** Yoğunlukları bir solukta hesaplar (hazırlanmadıysa). */
+  prepare() {
+    for (const _ of this.preparing());
+    return this;
+  }
+
+  /** Yoğunlukların parça parça hesabı: ilerlemeyi (0..1) verir (yükleme ekranı için). */
+  *preparing(rowsPerStep = 48) {
+    if (this.ready) return;
+    for (const progress of this.#computeDensities(rowsPerStep)) yield progress;
+    this.ready = true;
+  }
+
+  *#computeDensities(rowsPerStep) {
     const n = WIDTH * HEIGHT;
     this.tree = new Float32Array(n);
     this.bush = new Float32Array(n);
@@ -51,16 +68,28 @@ export class OverviewLayer {
         this.grass[i] = biomes.grassChance(x, y);
         this.fertility[i] = biomes.fertility(x, y);
       }
+      if ((py + 1) % rowsPerStep === 0) yield (py + 1) / HEIGHT;
     }
   }
 
-  #paint(season) {
+  /** Satırın renkleri: kuzeyde kuzeyin, güneyde güneyin mevsimi; ekvator çevresinde ikisinin karışımı. */
+  static #rowPalettes(north, south) {
+    const rgb = (season) => Object.fromEntries(Object.entries(season.palette).map(([k, v]) => [k, hexToRgb(v)]));
+    const [n, s] = [rgb(north), rgb(south)];
+    return Array.from({ length: HEIGHT }, (_, row) => {
+      const southness = smoothstep(0.5 - TROPICS, 0.5 + TROPICS, (row + 0.5) / HEIGHT);
+      return Object.fromEntries(Object.keys(n).map((k) => [k, mix(n[k], s[k], southness)]));
+    });
+  }
+
+  #paint(north, south) {
     const ctx = this.canvas.getContext('2d');
     const image = ctx.createImageData(WIDTH, HEIGHT);
-    const palette = Object.fromEntries(Object.entries(season.palette).map(([k, v]) => [k, hexToRgb(v)]));
+    const palettes = OverviewLayer.#rowPalettes(north, south);
     const sea = hexToRgb(COLORS.SEA);
     const ice = hexToRgb(COLORS.ICE);
     for (let i = 0; i < this.tree.length; i++) {
+      const palette = palettes[Math.floor(i / WIDTH)];
       if (this.surface[i] !== Surface.LAND) {
         image.data.set([...(this.surface[i] === Surface.SEA ? sea : ice), 255], i * 4);
         continue;
@@ -85,13 +114,15 @@ export class OverviewLayer {
     }
     this.pixels = ctx.getImageData(0, 0, WIDTH, HEIGHT).data; // küre görünümü buradan örnekler (sular abartılı, seçilsin diye)
     ctx.putImageData(image, 0, 0); // düz görünümde suları gerçek boyutlarıyla özellik katmanı çizer
-    this.season = season;
+    this.seasons = [north, south];
+    this.version++;
   }
 
-  /** Mevsimin renkleriyle boyalı olmasını sağlar. */
+  /** İki yarıkürenin mevsim renkleriyle boyalı olmasını sağlar. */
   refresh() {
-    const season = this.world.calendar.season;
-    if (season !== this.season) this.#paint(season);
+    const north = Calendar.seasonAt(this.world.now, 0);
+    const south = Calendar.seasonAt(this.world.now, this.world.height);
+    if (!this.seasons || this.seasons[0] !== north || this.seasons[1] !== south) this.#paint(north, south);
   }
 
   /** Daha yakın katmanların altında da zemin olarak çizilir (eksik parçalar görünmesin). */

@@ -1,4 +1,4 @@
-import { DAY, HOUR, MINUTE } from './time.js';
+import { HOUR, MINUTE } from './time.js';
 
 export const WEATHER = Object.freeze({
   FORECAST: 4 * HOUR, // sert hava bu kadar yaklaşınca gökyüzünden anlaşılır
@@ -6,8 +6,6 @@ export const WEATHER = Object.freeze({
   SNOW_SLOWDOWN: 0.35, // tam kar örtüsünde yürüme yavaşlaması
   SNOW_FORAGE_LOSS: 0.7, // tam kar örtüsünde otlamanın zorlaşması
   SNOW_SIGHT_LOSS: 0.5, // tam kar örtüsünde yiyecek arama menzilinin kısalması
-  SNOW_MELT_TIME: 20 * DAY, // 1 °C'de tam örtünün erime süresi
-  SNOW_SETTLE_TIME: 30 * DAY, // don altında bile kar yavaş yavaş oturur
   DRY_GROWTH: 0.6, // kuraklıkta bitki büyüme çarpanı
   WET_GROWTH: 1.3, // bol yağışta bitki büyüme çarpanı
   WET_TIME: 2 * HOUR, // sağanakta açıkta sırılsıklam olma süresi

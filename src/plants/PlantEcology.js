@@ -22,12 +22,13 @@ export class PlantEcology {
 
   update(chunk, world) {
     const now = world.now;
-    const growthYears = Calendar.growthYearsBetween(this.updatedAt, now) * world.weather.growthFactor;
+    const center = { x: chunk.centerX, y: chunk.centerY };
+    const growthYears = Calendar.growthYearsBetween(this.updatedAt, now, center.y) * world.weather.at(center).growthFactor;
     const years = (now - this.updatedAt) / Calendar.yearLength;
     this.updatedAt = now;
     if (years <= 0) return;
 
-    const season = world.calendar.season;
+    const season = world.calendar.seasonAt(center);
     const seedYears = Math.min(years, PLANTS.MAX_CATCH_UP);
     let changed = false;
     for (const layer of PLANT_LAYERS) {

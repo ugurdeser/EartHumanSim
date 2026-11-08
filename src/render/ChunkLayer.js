@@ -1,3 +1,4 @@
+import { Calendar } from '../core/Calendar.js';
 import { DotPainter } from './DotPainter.js';
 import { OverviewLayer } from './OverviewLayer.js';
 
@@ -23,7 +24,6 @@ export class ChunkLayer {
 
   draw(ctx, camera) {
     if (camera.zoom < OverviewLayer.maxZoom || camera.zoom >= MAX_ZOOM) return;
-    const season = this.world.calendar.season;
     const { minX, minY, maxX, maxY } = camera.visibleBounds;
     let budget = NEW_PER_FRAME;
     const chunks = this.world.chunks;
@@ -37,6 +37,7 @@ export class ChunkLayer {
         const key = chunks.keyOf(cx, cy);
         let entry = this.cache.get(key);
         const chunk = chunks.peek(cx, cy);
+        const season = Calendar.seasonAt(this.world.now, (cy + 0.5) * chunks.chunkSize); // parçanın yarıküresinin mevsimi
         const stale = !entry || entry.season !== season || (chunk && entry.version !== chunk.version);
         if (stale) {
           if (budget-- <= 0) continue; // sonraki karelerde; altında uzak görünüm var

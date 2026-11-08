@@ -12,13 +12,9 @@ export const WORLD = Object.freeze({
 });
 
 export const PLANET = Object.freeze({
-  SEA_SHARE: 0.4, // yüzeyin deniz olan payı
-  CONTINENT_SCALE: 20000, // m: kıta / deniz öbeklerinin tipik boyu
   START_LAND: 7000, // m: başlangıç yeri, çevresinde bu yarıçapta kara olan kıta içi bir noktadır
   START_LATITUDE: 30, // derece: ılıman kuşak
-  ICE_MARGIN: 15400, // m: kutuptan bu kadar uzağa kadar aşılamaz buzul
   ICE_WOBBLE: 2800, // m: buzul kıyısının dalgalanması
-  CLIMATE_SWING: 32, // °C: ekvatordan kutba sıcaklık farkı (30. enlemde fark sıfır)
   HOME_RADIUS: 4000, // m: başlangıç çevresinde kaynaklar eski yoğunluğunda
   FERTILITY_REACH: 32000, // m: verimlilik bu uzaklığa kadar yavaşça bölgesel düzene geçer
   SPARSE: 0.3, // uzak diyarlarda kaynak yoğunluğu çarpanı

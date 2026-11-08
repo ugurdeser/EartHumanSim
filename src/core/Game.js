@@ -12,8 +12,17 @@ import { PlantWindow } from '../ui/PlantWindow.js';
 import { ProductionWindow } from '../ui/ProductionWindow.js';
 import { CharacterWindow } from '../ui/character/CharacterWindow.js';
 import { DevPanel } from '../ui/dev/DevPanel.js';
+import { FpsMeter } from '../ui/FpsMeter.js';
+import { OverlayLegend } from '../ui/OverlayLegend.js';
+import { SettingsWindow } from '../ui/SettingsWindow.js';
+import { WeatherMapControl } from '../ui/WeatherMapControl.js';
+import { WeatherProbe } from '../ui/WeatherProbe.js';
+import { DisplaySettings } from '../settings/DisplaySettings.js';
 import { WeatherDevSection } from '../ui/dev/WeatherDevSection.js';
+import { CloudField } from '../render/CloudField.js';
+import { OverviewLayer } from '../render/OverviewLayer.js';
 import { FastForward } from './FastForward.js';
+import { breathe, LoadStage, runInSteps } from './LoadStage.js';
 import { WorldBuilder } from './WorldBuilder.js';
 
 const UI_REFRESH_MS = 200;
@@ -21,14 +30,32 @@ const START_VIEW_METERS = 1500;
 
 /** Uygulamanın kompozisyon kökü ve ana döngüsü. */
 export class Game {
-  constructor({ canvas, sidebar, seed }) {
-    const { rng, clock, calendar, log, world, start } = WorldBuilder.build(seed, { settled: false });
+  /**
+   * Gezegeni aşama aşama kurar (yükleme ekranı `onProgress(aşama, 0..1)` ile izler), sonra oyunu açar.
+   * @param {{canvas, sidebar, planet: import('../world/PlanetSettings.js').PlanetSettings, onProgress?}} options
+   */
+  static async create({ canvas, sidebar, planet, onProgress = () => {} }) {
+    const built = await WorldBuilder.buildAsync(planet, onProgress);
+    const overview = new OverviewLayer(built.world);
+    await runInSteps(overview.preparing(), LoadStage.OVERVIEW, onProgress);
+    const clouds = await runInSteps(CloudField.building(), LoadStage.CLOUDS, onProgress);
+    onProgress(LoadStage.SCREEN, 0);
+    await breathe();
+    const game = new Game({ canvas, sidebar, built, prepared: { overview, clouds } });
+    onProgress(LoadStage.SCREEN, 1);
+    return game;
+  }
+
+  /** `built`: WorldBuilder'ın kurduğu dünya; `prepared`: önceden hazırlanmış çizim parçaları. */
+  constructor({ canvas, sidebar, built, prepared = {} }) {
+    const { rng, clock, calendar, log, world, start } = built;
     Object.assign(this, { rng, clock, calendar, log, world });
 
     this.fastForward = new FastForward(clock, world);
     this.selection = new Selection();
+    this.settings = new DisplaySettings();
     this.camera = new Camera(world.width, world.height);
-    this.renderer = new Renderer(canvas, world, this.camera, this.selection);
+    this.renderer = new Renderer(canvas, world, this.camera, this.selection, this.settings, prepared);
     this.camera.fitWorld();
     this.camera.zoom = Math.min(this.camera.width, this.camera.height) / START_VIEW_METERS;
     this.camera.centerOn(start);
@@ -40,7 +67,12 @@ export class Game {
     this.groupWindow = new GroupWindow(canvas.parentElement, world, this.selection);
     this.animalWindow = new AnimalWindow(canvas.parentElement, world, this.selection);
     this.productionWindow = new ProductionWindow(canvas.parentElement);
-    this.devPanel = new DevPanel(canvas.parentElement, [new WeatherDevSection(world.weather)]);
+    this.devPanel = new DevPanel(canvas.parentElement, [new WeatherDevSection(world.weather, this.camera)]);
+    this.settingsWindow = new SettingsWindow(canvas.parentElement, this.settings);
+    this.fpsMeter = new FpsMeter(canvas.parentElement, this.settings);
+    this.overlayLegend = new OverlayLegend(canvas.parentElement, this.renderer.maps);
+    this.weatherMapControl = new WeatherMapControl(this.productionWindow.toolbar, this.settings);
+    this.weatherProbe = new WeatherProbe(canvas.parentElement, canvas, this.camera, world, this.settings);
     this.input = new InputController({ canvas, camera: this.camera, world, selection: this.selection, game: this });
 
     this.accumulator = 0;
@@ -93,6 +125,7 @@ export class Game {
   #frame(timestamp) {
     const realDt = this.lastFrame === null ? 0 : Math.min(0.1, (timestamp - this.lastFrame) / 1000);
     this.lastFrame = timestamp;
+    this.fpsMeter.tick(timestamp);
 
     this.#simulate(realDt);
     this.#followSelection();
@@ -107,6 +140,8 @@ export class Game {
       this.groupWindow.update();
       this.animalWindow.update();
       this.devPanel.update();
+      this.overlayLegend.update();
+      this.weatherProbe.update();
     }
     requestAnimationFrame((t) => this.#frame(t));
   }

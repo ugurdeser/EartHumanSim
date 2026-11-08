@@ -1,16 +1,16 @@
-const MAX_ALPHA = 0.55;
-
-/** Yerdeki kar örtüsü: bitkilerin üstüne, göl ve canlıların altına beyazlık. */
+/**
+ * Yerdeki kar örtüsü: bitkilerin üstüne, göl ve canlıların altına beyazlık.
+ * Atmosfer modelinin her hücresinin karı, yumuşatılarak bütün haritaya yayılır.
+ */
 export class SnowLayer {
-  constructor(world) {
+  constructor(world, maps) {
     this.world = world;
+    this.maps = maps;
   }
 
-  draw(ctx, camera) {
-    const cover = this.world.weather.snowCover;
-    if (cover < 0.02) return;
-    const { minX, minY, maxX, maxY } = camera.visibleBounds;
-    ctx.fillStyle = `rgba(246, 249, 252, ${cover * MAX_ALPHA})`;
-    ctx.fillRect(minX, minY, maxX - minX, maxY - minY);
+  draw(ctx) {
+    this.maps.refresh();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(this.maps.snowCanvas, 0, 0, this.world.width, this.world.height);
   }
 }

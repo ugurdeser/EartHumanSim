@@ -7,10 +7,11 @@ export class BodyClimate {
     this.person = person;
   }
 
-  /** Hava (açıktaysa rüzgârla) + ateş + barınak yalıtımı + giysi − ıslaklık. */
+  /** Bulunduğu yerin havası (açıktaysa rüzgârla) + ateş + barınak yalıtımı + giysi − ıslaklık. */
   feltTemperature(world) {
-    const air = this.person.isSheltered ? world.weather.temperature : world.weather.exposedTemperature;
-    let temperature = air + world.climateAt(this.person.position) + this.person.inventory.bestInsulation - this.person.needs.wetness * WEATHER.WET_CHILL;
+    const { position } = this.person;
+    const air = this.person.isSheltered ? world.weather.temperatureAt(position) : world.weather.exposedTemperatureAt(position);
+    let temperature = air + this.person.inventory.bestInsulation - this.person.needs.wetness * WEATHER.WET_CHILL;
     if (world.isNearLitFire(this.person.position)) temperature += FIRE.HEAT;
     if (this.person.isAtHome()) temperature += this.person.home.insulation;
     if (this.person.isCarried) temperature += AGING.CARRIED_WARMTH;
@@ -18,7 +19,7 @@ export class BodyClimate {
   }
 
   updateWetness(world, dt) {
-    const precipitation = this.person.isSheltered ? 0 : world.weather.precipitation;
+    const precipitation = this.person.isSheltered ? 0 : world.weather.at(this.person.position).precipitation;
     const drying = world.isNearLitFire(this.person.position) ? 4 : precipitation > 0 ? 0 : 1;
     this.person.needs.updateWetness(dt, { precipitation, drying });
   }

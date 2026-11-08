@@ -79,9 +79,4 @@ export const FEATURES = Object.freeze({
   STONE_MINE_DENSITY: 0.25,
   FLINT_MINE_DENSITY: 0.1,
   CLAY_MINE_DENSITY: 0.2,
-  RIVER_RADIUS: [7, 15], // m: kaynaktan ağza doğru genişler
-  RIVER_WAYPOINT: [500, 1100], // m: nehir başlangıç bölgesine bu kadar yaklaşır
-  RIVER_MEANDER: 450, // m: kıvrım uzunluğu
-  RIVER_FISH_EVERY: 8, // her bu kadar parçada bir balıklı nokta
-  RIVER_FISH: 2,
 });

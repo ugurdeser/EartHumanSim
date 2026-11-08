@@ -110,6 +110,11 @@ export class InputController {
       this.game.devPanel.toggle();
       return;
     }
+    if (e.code === 'F2') {
+      e.preventDefault();
+      this.game.settingsWindow.toggle();
+      return;
+    }
     if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
     if (e.code === 'Space') {
       e.preventDefault();

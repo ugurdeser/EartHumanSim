@@ -13,10 +13,10 @@ export class Pasture {
    * (otlanıp seyrelen yer daha az doyurur).
    */
   forageAt(position) {
-    const season = this.world.calendar.season;
+    const season = this.world.calendar.seasonAt(position);
     const cover = this.world.chunks.peek(this.world.chunks.coordX(position.x), this.world.chunks.coordY(position.y))?.ecology?.grassCover ?? 1;
     const meadow = Math.min(1, this.world.biomes.grassChance(position.x, position.y) * cover) * Math.max(MIN_SEASON_FORAGE, Math.min(1, season.growth));
-    return meadow * this.world.weather.forageFactor;
+    return meadow * this.world.weather.at(position).forageFactor;
   }
 
   /**

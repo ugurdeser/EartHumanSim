@@ -1,22 +1,17 @@
 import { FEATURES, PLANET, WORLD } from '../config.js';
-import { lerp } from '../core/MathUtils.js';
 import { Vector2 } from '../core/Vector2.js';
 import { Mine } from './Mine.js';
 import { Outline } from './Outline.js';
 import { ALL_MINE_TYPES } from './MineTypes.js';
 import { Pond } from './Pond.js';
-import { RiverSegment } from './RiverSegment.js';
 
 const KM2 = 1e6;
-const SEGMENT_SPACING = 0.7; // ardışık parçalar yarıçapın bu katı kadar arayla: kıyı düzgün görünür
-const MEANDER_ANGLE = 0.7; // rad: nehrin kıvrılma açısı
-const RIVER_LABEL_EVERY = 90; // kaç parçada bir haritaya "Nehir" yazılır
 const BASIN_STEP = 60; // m: göletin çukura inerken attığı adım
 const BASIN_STEPS = 6;
 const BASIN_DIRECTIONS = 8;
 
 /**
- * Seyrek ama kalıcı yapıları tüm harita için baştan üretir: nehir, göletler, madenler.
+ * Seyrek ama kalıcı yapıları tüm harita için baştan üretir: göletler, madenler.
  * Bitkiler ise ChunkGenerator ile gerektikçe üretilir.
  */
 export class FeatureGenerator {
@@ -25,7 +20,6 @@ export class FeatureGenerator {
   }
 
   generate(world, startCenter) {
-    this.#placeRiver(world, startCenter);
     this.#placePonds(world, this.#points(world, startCenter, FEATURES.POND_DENSITY));
     for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, this.#points(world, startCenter, type.density));
     this.#guaranteeStartArea(world, startCenter);
@@ -73,39 +67,6 @@ export class FeatureGenerator {
 
   #mine(position, type) {
     return new Mine(position.x, position.y, { resource: type.resource, name: type.name, color: type.color });
-  }
-
-  /** Başlangıç diyarını batıdan doğuya kıvrılarak geçen, başlangıç bölgesinin yakınından akan temiz nehir. */
-  #placeRiver(world, startCenter) {
-    const rng = this.rng;
-    const span = PLANET.HOME_RADIUS;
-    const side = rng.chance(0.5) ? 1 : -1;
-    const waypoint = startCenter.clone();
-    waypoint.y += side * rng.range(...FEATURES.RIVER_WAYPOINT);
-    const reach = () => startCenter.y + rng.range(-span * 0.6, span * 0.6);
-    const end = new Vector2(startCenter.x + span, reach());
-    const point = new Vector2(startCenter.x - span, reach());
-    const phase = rng.range(0, Math.PI * 2);
-    const [narrow, wide] = FEATURES.RIVER_RADIUS;
-    let index = 0;
-    let travelled = 0;
-
-    for (const target of [waypoint, end]) {
-      while (point.distanceTo(target) > wide) {
-        const radius = lerp(narrow, wide, (point.x - startCenter.x + span) / (span * 2));
-        const fishy = index % FEATURES.RIVER_FISH_EVERY === 0;
-        const named = index % RIVER_LABEL_EVERY === 0;
-        index++;
-        world.addPond(new RiverSegment(point.x, point.y, { radius, named, fishCapacity: fishy ? FEATURES.RIVER_FISH : 0 }));
-
-        const step = radius * SEGMENT_SPACING;
-        const heading = Math.atan2(target.y - point.y, target.x - point.x) + Math.sin(travelled / FEATURES.RIVER_MEANDER + phase) * MEANDER_ANGLE;
-        point.x += Math.cos(heading) * step;
-        point.y += Math.sin(heading) * step;
-        world.clampPosition(point);
-        travelled += step;
-      }
-    }
   }
 
   #placePonds(world, points) {

@@ -12,3 +12,4 @@ export * from './config/farming.js';
 export * from './config/environment.js';
 export * from './config/society.js';
 export * from './config/appearance.js';
+export * from './config/atmosphere.js';

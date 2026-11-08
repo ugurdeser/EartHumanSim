@@ -13,7 +13,7 @@ export class PlantLayer {
 
   draw(ctx, camera) {
     if (camera.zoom < ChunkLayer.maxZoom) return;
-    const palette = this.world.calendar.season.palette;
+    const palette = this.world.calendar.seasonAt(camera).palette; // görünen alan küçük: baktığın yerin mevsimi
     const { minX, minY, maxX, maxY } = camera.visibleBounds;
     const grass = [];
     const bushes = [];

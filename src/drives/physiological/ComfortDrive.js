@@ -38,7 +38,7 @@ export class ComfortDrive extends Drive {
   #shelterNeed(person, world) {
     if (person.isSheltered || !person.home.hasShelter || person.needs.warmth < FREEZING) return 0;
     if (!ActionFactory.isNearHome(person, HOME_RANGE)) return 0;
-    return world.weather.shelterUrge;
+    return world.weather.at(person.position).shelterUrge;
   }
 
   createAction(person, world) {
@@ -50,10 +50,10 @@ export class ComfortDrive extends Drive {
   /** Eve çekil, hava dinene kadar dinlen. */
   #takeShelter(person, world) {
     return new SequenceAction('Kötü havadan korunmaya gidiyor', [
-      ActionFactory.goHome(person, `${world.weather.current.name} havadan eve kaçıyor`),
+      ActionFactory.goHome(person, `${world.weather.at(person.position).current.name} havadan eve kaçıyor`),
       new PerformAction('Hava dinene kadar evde bekliyor', MAX_SHELTER, {
         onTick: (p, _w, dt) => p.needs.rest(dt, p.home.restQuality),
-        until: (p, w) => w.weather.shelterUrge < 0.2 || p.needs.warmth < FREEZING,
+        until: (p, w) => w.weather.at(p.position).shelterUrge < 0.2 || p.needs.warmth < FREEZING,
       }),
     ]);
   }

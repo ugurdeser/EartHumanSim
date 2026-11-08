@@ -1,59 +1,41 @@
-import { HOUR } from '../../config.js';
-import { WeatherType } from '../../weather/WeatherType.js';
+import { SystemKind } from '../../weather/atmosphere/PressureSystems.js';
 import { el, percent } from '../dom.js';
 
-const WEATHERS = Object.values(WeatherType);
-const MAX_MOISTURE = 0.6;
+const KM = 1000;
 
-const formatHours = (seconds) => {
-  if (!Number.isFinite(seconds)) return 'sabit';
-  const hours = seconds / HOUR;
-  return hours < 1 ? `${Math.round(hours * 60)} dk` : `${hours.toFixed(1)} sa`;
-};
-
-/** Geliştirici panelinde havayı izleme ve değiştirme bölümü. */
+/**
+ * Geliştirici panelinde havayı izleme ve değiştirme: kameranın baktığı yerin havası, oraya basınç
+ * sistemi bırakma, oranın karını ve toprak nemini ayarlama, modeli durdurma.
+ */
 export class WeatherDevSection {
-  constructor(weather) {
+  constructor(weather, camera) {
     this.weather = weather;
-    this.title = '🌦️ Hava durumu';
-
+    this.camera = camera;
+    this.title = '🌦️ Hava durumu (baktığın yer)';
     this.info = el('dl', { class: 'info' });
-    this.buttons = new Map(WEATHERS.map((type) => [type, el('button', { title: type.name, onClick: () => this.#apply(type) }, `${type.icon} ${type.name}`)]));
-    this.hours = el('input', { type: 'number', min: '0.5', step: '0.5', placeholder: 'kendiliğinden' });
-    this.lock = el('input', { type: 'checkbox', onChange: () => weather.setLocked(this.lock.checked) });
-    this.next = el(
-      'select',
-      { onChange: () => weather.setNext(WEATHERS.find((t) => t.id === this.next.value)) },
-      WEATHERS.map((type) => el('option', { value: type.id }, `${type.icon} ${type.name}`)),
+    this.buttons = [SystemKind.CYCLONE, SystemKind.ANTICYCLONE, SystemKind.HURRICANE].map((kind) =>
+      el('button', { title: `${kind.name} buraya`, onClick: () => weather.spawnSystem(kind, this.camera) }, kind.name),
     );
-    this.snow = this.#slider(1, (value) => weather.setSnowCover(value));
-    this.moisture = this.#slider(MAX_MOISTURE, (value) => weather.setMoisture(value));
-
+    this.pause = el('input', { type: 'checkbox', onChange: () => (weather.paused = this.pause.checked) });
+    this.snow = this.#slider((value) => weather.setSnowAt(this.camera, value));
+    this.soil = this.#slider((value) => weather.setSoilAt(this.camera, value));
     this.root = el(
       'div',
       { class: 'dev-weather' },
       this.info,
-      el('h4', { text: 'Havayı değiştir' }),
-      el('div', { class: 'dev-buttons' }, [...this.buttons.values()]),
-      el('label', { class: 'dev-row' }, 'Süre (saat)', this.hours),
-      el('label', { class: 'dev-row' }, 'Havayı sabitle', this.lock),
-      el('label', { class: 'dev-row' }, 'Sıradaki hava', this.next),
-      el('h4', { text: 'Zemin' }),
+      el('h4', { text: 'Basınç sistemi bırak' }),
+      el('div', { class: 'dev-buttons' }, this.buttons),
+      el('label', { class: 'dev-row' }, 'Havayı durdur', this.pause),
+      el('h4', { text: 'Bu hücrenin zemini' }),
       el('label', { class: 'dev-row' }, 'Kar örtüsü', this.snow),
-      el('label', { class: 'dev-row' }, 'Toprak nemi', this.moisture),
+      el('label', { class: 'dev-row' }, 'Toprak nemi', this.soil),
     );
   }
 
-  #slider(max, onInput) {
-    const input = el('input', { type: 'range', min: '0', max: String(max), step: String(max / 100) });
+  #slider(onInput) {
+    const input = el('input', { type: 'range', min: '0', max: '1', step: '0.01' });
     input.addEventListener('input', () => onInput(Number(input.value)));
     return input;
-  }
-
-  #apply(type) {
-    const hours = Number(this.hours.value);
-    this.weather.force(type, hours > 0 ? hours : null);
-    this.update();
   }
 
   /** Kullanıcı elle değiştirirken kontrolün değerini ezme. */
@@ -62,23 +44,25 @@ export class WeatherDevSection {
   }
 
   update() {
-    const w = this.weather;
+    const { weather, camera } = this;
+    const local = weather.at(camera);
+    const nearest = weather.atmosphere.systems.nearest(camera.x, camera.y);
     const rows = [
-      ['Şu an', `${w.current.icon} ${w.current.name} · güç ${percent(w.intensity)}`],
-      ['Kalan süre', formatHours(w.remaining)],
-      ['Sıradaki', `${w.next.icon} ${w.next.name}`],
-      ['Sıcaklık', `${w.temperature.toFixed(1)}°C (açıkta ${w.exposedTemperature.toFixed(1)}°C)`],
-      ['Yağış', percent(w.precipitation)],
-      ['Kar örtüsü', percent(w.snowCover)],
-      ['Toprak nemi', w.moisture.toFixed(2)],
-      ['Büyüme / hareket', `×${w.growthFactor.toFixed(2)} / ×${w.moveFactor.toFixed(2)}`],
-      ['Sığınma isteği', percent(w.shelterUrge)],
+      ['Hava', `${local.current.icon} ${local.current.name} · güç ${percent(local.intensity)}`],
+      ['Sıcaklık', `${weather.temperatureAt(camera).toFixed(1)}°C (açıkta ${weather.exposedTemperatureAt(camera).toFixed(1)}°C)`],
+      ['Rüzgâr', `${local.wind.toFixed(1)} m/s ${local.windFrom}`],
+      ['Basınç', `${local.pressure.toFixed(0)} hPa`],
+      ['Bulut / yağmur / kar', `${percent(local.cover)} / ${local.rain.toFixed(1)} / ${local.snowfall.toFixed(1)} mm/sa`],
+      ['Yükselme / kümülüs', `${weather.atmosphere.state.lift[local.cell].toFixed(2)} / ${percent(local.convection)}`],
+      ['Kar örtüsü / toprak', `${percent(local.snowCover)} / ${percent(local.soilWetness)}`],
+      ['Büyüme / hareket', `×${local.growthFactor.toFixed(2)} / ×${local.moveFactor.toFixed(2)}`],
+      ['Sığınma isteği', percent(local.shelterUrge)],
+      ['En yakın sistem', nearest ? `${nearest.system.kind.name} · ${Math.round(nearest.distance / KM)} km (Dünya ölçeği)` : 'yok'],
+      ['Gezegende', `${weather.atmosphere.systems.list.length} basınç sistemi`],
     ];
     this.info.replaceChildren(...rows.flatMap(([key, value]) => [el('dt', { text: key }), el('dd', { text: value })]));
-    for (const [type, button] of this.buttons) button.classList.toggle('active', type === w.current);
-    this.lock.checked = w.locked;
-    WeatherDevSection.#sync(this.next, w.next.id);
-    WeatherDevSection.#sync(this.snow, w.snowCover);
-    WeatherDevSection.#sync(this.moisture, w.moisture);
+    this.pause.checked = weather.paused;
+    WeatherDevSection.#sync(this.snow, local.snowCover);
+    WeatherDevSection.#sync(this.soil, local.soilWetness);
   }
 }

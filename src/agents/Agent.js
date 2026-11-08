@@ -7,7 +7,7 @@ const MIN_SLIDE_PROGRESS = 0.2; // kıyı boyunca kayarken adımın bu kadarı h
 export class Agent extends Entity {
   /** Hedefe doğru ilerler; vardıysa ya da deniz yolu kapattıysa true döner. */
   moveTowards(target, baseSpeed, dt, world) {
-    const speed = baseSpeed * world.weather.moveFactor;
+    const speed = baseSpeed * world.weather.at(this.position).moveFactor;
     const dx = wrapDelta(target.x - this.position.x);
     const dy = target.y - this.position.y;
     const distance = Math.hypot(dx, dy);

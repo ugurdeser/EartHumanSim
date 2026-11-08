@@ -59,7 +59,8 @@ export class ProductionWindow {
         ),
       ),
     );
-    container.append(el('div', { class: 'top-buttons' }, ...this.buttons.values()), this.root);
+    this.toolbar = el('div', { class: 'top-buttons' }, ...this.buttons.values()); // başka düğmeler de buraya eklenir
+    container.append(this.toolbar, this.root);
     window.addEventListener('keydown', (e) => {
       if (e.code === 'Escape') this.#close();
     });

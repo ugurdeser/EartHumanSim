@@ -40,7 +40,7 @@ export class Reproduction {
       !this.pregnancy &&
       a.needs.food >= MIN_FOOD_TO_CONCEIVE &&
       !a.herd?.isFull &&
-      this.profile.matingSeasons.includes(world.calendar.season)
+      this.profile.matingSeasons.includes(world.calendar.seasonAt(a.position))
     );
   }
 

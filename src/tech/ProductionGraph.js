@@ -34,7 +34,7 @@ const Nature = Object.freeze({
   CLAY_PIT: { id: 'nature:clay_pit', name: 'Kil yatağı', icon: '⛰', detail: 'kil' },
   SHEEP: { id: 'nature:sheep', name: 'Koyun', icon: '🐑', detail: 'yabani: avla et, yün, post' },
   WOLF: { id: 'nature:wolf', name: 'Kurt', icon: '🐺', detail: 'et, post' },
-  WATER: { id: 'nature:water', name: 'Gölet / nehir', icon: '💧', detail: 'balık, su' },
+  WATER: { id: 'nature:water', name: 'Gölet', icon: '💧', detail: 'balık, su' },
 });
 
 /** Eşyanın doğadaki kaynağı: [eşya, kaynaklar, gereken alet yeteneği]. */

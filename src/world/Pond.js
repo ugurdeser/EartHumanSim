@@ -9,7 +9,7 @@ export class Pond extends Entity {
   constructor(x, y, { radius, outline = null }) {
     super(x, y);
     this.radius = radius;
-    this.outline = outline; // yoksa tam daire (nehir parçaları)
+    this.outline = outline; // yoksa tam daire
     this.school = null; // içindeki balık sürüsü (Herd)
   }
 

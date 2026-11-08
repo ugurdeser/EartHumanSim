@@ -20,19 +20,27 @@ export class TimeControls {
       { class: 'panel time-controls' },
       this.clockLabel,
       this.weatherLabel,
-      el('div', { class: 'buttons' }, this.pauseButton, ...this.speedButtons),
+      el(
+        'div',
+        { class: 'buttons' },
+        this.pauseButton,
+        ...this.speedButtons,
+        el('button', { class: 'settings-button', title: 'Ayarlar (F2)', onClick: () => game.settingsWindow.toggle() }, '⚙'),
+      ),
       el('div', { class: 'buttons skip' }, ...this.skipButtons),
       el('div', { class: 'skip-row hidden' }, this.skipStatus, this.cancelButton),
     );
   }
 
   update() {
-    const { clock, calendar } = this.game;
-    const season = calendar.season;
+    const { clock, calendar, camera } = this.game;
+    const season = calendar.seasonAt(camera); // baktığın yarıkürenin mevsimi
     this.clockLabel.textContent = `${calendar.date}, Yıl ${calendar.year} · ${season.icon} ${season.name}`;
     const { weather } = this.game.world;
-    const temperature = weather.temperature + this.game.world.climateAt(this.game.camera); // baktığın enlemin sıcaklığı
-    this.weatherLabel.textContent = `${clock.formatTime()} ${clock.isNight ? '🌙' : '🕑'} · ${temperature.toFixed(0)}°C · ${weather.describe()}`;
+    const local = weather.at(camera);
+    const temperature = weather.temperatureAt(camera); // baktığın yerin sıcaklığı
+    this.weatherLabel.textContent = `${clock.formatTime()} ${clock.isNight ? '🌙' : '🕑'} · ${temperature.toFixed(0)}°C · ${local.describe()}`;
+    this.weatherLabel.title = `Baktığın yer · rüzgâr ${local.wind.toFixed(0)} m/s ${local.windFrom} · ${local.pressure.toFixed(0)} hPa · bulut %${Math.round(local.cover * 100)}`;
     this.pauseButton.textContent = clock.paused ? '▶' : '⏸';
     this.speedButtons.forEach((button, i) => button.classList.toggle('active', SIM.SPEEDS[i] === clock.timeScale));
     this.#updateSkip();

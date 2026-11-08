@@ -28,19 +28,19 @@ export class HoardingDrive extends Drive {
     return !person.isDependent;
   }
 
-  /** Kış hazırlığının aciliyeti (0..1): kış yaklaştıkça artar, kış içinde tamdır. */
-  #winterUrgency(world) {
-    return Math.max(0, 1 - world.calendar.daysUntil(Season.WINTER) / PREPARE_DAYS);
+  /** Yuvanın yerinde kış hazırlığının aciliyeti (0..1): kış yaklaştıkça artar, kış içinde tamdır. */
+  #winterUrgency(person, world) {
+    return Math.max(0, 1 - world.calendar.daysUntil(Season.WINTER, person.home.position) / PREPARE_DAYS);
   }
 
   #needsFuel(person, world) {
-    return this.#winterUrgency(world) > 0 && person.needs.warmth >= CHILLED && person.home.storage.fuelSeconds < WINTER_FUEL;
+    return this.#winterUrgency(person, world) > 0 && person.needs.warmth >= CHILLED && person.home.storage.fuelSeconds < WINTER_FUEL;
   }
 
   computeRaw(person, world, dt) {
     this.accumulate(dt, 8);
-    const urgency = this.#winterUrgency(world);
-    const preparing = urgency > 0 && world.calendar.season !== Season.WINTER;
+    const urgency = this.#winterUrgency(person, world);
+    const preparing = urgency > 0 && world.calendar.seasonAt(person.home.position) !== Season.WINTER;
     const target = preparing ? WINTER_FOOD : COMFORTABLE_FOOD;
     const foodStock = Math.min(1, (person.home.storage.foodCount + person.inventory.foodCount) / target);
     // depo boşaldıkça yakacak kaygısı büyür

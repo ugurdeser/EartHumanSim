@@ -1,13 +1,19 @@
 import { clamp01, smoothstep } from '../core/MathUtils.js';
 import { latitudeOf, wrapDelta } from '../core/Planet.js';
 
-const PEAK_HEIGHT = 500; // m: en yüksek sırt (eğimi belirler)
-const LOW_SUN = 0.3; // güneş bundan alçaktayken gölge daha fazla uzamaz
-const SHADE = 0.75; // en dik yamacın parlaklık değişimi
-const DUSK = 0.1; // güneş bu yükseklikten alçalırken gölge silinir
-const SNOW_LINE = 0.62; // ekvatordaki kar çizgisi (yükselti)
-const POLAR_DROP = 0.5; // kutba yaklaşırken kar çizgisinin inişi
-const SNOW_EDGE = 0.1;
+/** Gölgelendirmenin ölçüleri: işlemci ve ekran kartı aynı değerlerle hesaplar. */
+export const HILLSHADE = Object.freeze({
+  PEAK_HEIGHT: 500, // m: en yüksek sırt (eğimi belirler)
+  LOW_SUN: 0.3, // güneş bundan alçaktayken gölge daha fazla uzamaz
+  SHADE: 0.75, // en dik yamacın parlaklık değişimi
+  DUSK: 0.1, // güneş bu yükseklikten alçalırken gölge silinir
+  SNOW_LINE: 0.62, // ekvatordaki kar çizgisi (yükselti)
+  POLAR_DROP: 0.5, // kutba yaklaşırken kar çizgisinin inişi
+  SNOW_EDGE: 0.1,
+  SNOW_BRIGHTNESS: 244, // karın rengi (0..255)
+});
+
+const { PEAK_HEIGHT, LOW_SUN, SHADE, DUSK, SNOW_LINE, POLAR_DROP, SNOW_EDGE } = HILLSHADE;
 
 /** Dağ ve tepelerin ışığı: küre de yakın görünüm de yüzeyi aynı hesapla gölgeler. */
 export class Hillshade {

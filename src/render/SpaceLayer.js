@@ -45,7 +45,7 @@ export class SpaceLayer {
 
   /** Güneş ekranda nerede ve gezegenin arkasına düşmüyorsa boyuyla birlikte. */
   #sun(camera) {
-    const point = this.#skyPoint(camera, camera.viewDirection(0, camera.eastOf(this.world.sunX)));
+    const point = this.#skyPoint(camera, camera.viewDirection(this.world.weather.declination, camera.eastOf(this.world.sunX)));
     if (!point) return null;
     if (Math.hypot(point.x - camera.width / 2, point.y - camera.height / 2) < camera.globeRadius) return null;
     return { ...point, radius: Math.max(1, Math.tan(SUN_ANGLE) * camera.height * FOCAL) };

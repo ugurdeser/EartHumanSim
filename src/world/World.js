@@ -1,6 +1,6 @@
-import { DAY, FIRE, PLANET, PLANTS, SIM, WORLD } from '../config.js';
+import { DAY, FIRE, PLANTS, SIM, WORLD } from '../config.js';
 import { clamp } from '../core/MathUtils.js';
-import { latitudeOf, wrapX } from '../core/Planet.js';
+import { wrapX } from '../core/Planet.js';
 import { Scheduler } from '../core/Scheduler.js';
 import { SpatialGrid } from '../core/SpatialGrid.js';
 import { Vector2 } from '../core/Vector2.js';
@@ -21,17 +21,18 @@ const MAX_PLANT_RADIUS = PLANTS.TREE.RADIUS[1];
 
 /** Fiziksel dünya: arazi, su, madenler, yuvalar, yollar ve tüm canlılar. */
 export class World {
-  constructor({ rng, clock, calendar, log }) {
+  /** Atmosfer kurulur ama ısıtılmaz: WorldBuilder `weather.warmUp()` ile ısıtır. */
+  constructor({ rng, clock, calendar, log, planet }) {
     this.width = WORLD.WIDTH;
     this.height = WORLD.HEIGHT;
     this.rng = rng;
     this.clock = clock;
     this.calendar = calendar;
     this.log = log;
-    this.weather = new WeatherSystem({ rng, calendar, log });
-
-    this.terrain = new Terrain(rng);
+    this.planet = planet;
+    this.terrain = new Terrain(rng, planet);
     this.start = this.terrain.start;
+    this.weather = new WeatherSystem({ calendar, log, terrain: this.terrain, width: this.width, height: this.height, seed: rng.seed, sunXAt: (time) => this.sunXAt(time), planet });
     this.biomes = new BiomeMap(rng, this.start);
     this.ponds = [];
     this.mines = [];
@@ -72,7 +73,11 @@ export class World {
 
   /** Güneşin tam tepede olduğu boylam: öğlen başlangıç bölgesinin üstünde, batıya doğru döner. */
   get sunX() {
-    return wrapX(this.start.x - ((this.now % DAY) / DAY - 0.5) * this.width);
+    return this.sunXAt(this.now);
+  }
+
+  sunXAt(time) {
+    return wrapX(this.start.x - ((time % DAY) / DAY - 0.5) * this.width);
   }
 
   // ---------- Kurulum ----------
@@ -162,11 +167,6 @@ export class World {
     return this.terrain.isLand(x, y);
   }
 
-  /** Enleme göre sıcaklık farkı (°C): ekvator sıcak, kutuplar soğuk; başlangıç enleminde sıfır. */
-  climateAt(position) {
-    return PLANET.CLIMATE_SWING * (0.25 - Math.sin(latitudeOf(position.y)) ** 2);
-  }
-
   randomPointNear(center, radius) {
     const angle = this.rng.angle();
     const r = Math.sqrt(this.rng.next()) * radius;
@@ -201,7 +201,7 @@ export class World {
 
   findNearestFood(position, maxRadius) {
     const now = this.now;
-    const radius = maxRadius * this.weather.sightFactor;
+    const radius = maxRadius * this.weather.at(position).sightFactor;
     return this.chunks.findNearest(position, radius, (c) => c.foodSources, (src) => src.available(now) > 0);
   }
 
@@ -318,7 +318,7 @@ export class World {
   // ---------- Döngü ----------
 
   update(dt) {
-    this.weather.update(dt);
+    this.weather.update(this.homes);
     this.activeTimer -= dt;
     if (this.activeTimer <= 0) {
       this.activeTimer = SIM.ACTIVE_REFRESH;
@@ -327,7 +327,7 @@ export class World {
     }
 
     for (const system of this.systems) system.update(this, dt);
-    for (const home of this.homes) home.update(dt, this.weather.precipitation);
+    for (const home of this.homes) home.update(dt, this.weather.at(home.position).precipitation);
     this.social.update();
     this.scheduler.popDue(this.now, (animal) => animal.wake(this));
     let anyDead = false;

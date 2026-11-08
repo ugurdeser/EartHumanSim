@@ -40,7 +40,7 @@ export class PlantingProject extends Project {
 
   #canAttempt(person, world) {
     if (!person.isAdult || !person.knowledge.knows(Technologies.PLANTING)) return false;
-    return world.calendar.season !== Season.WINTER && person.home.livingPlants.length < FARMING.MAX_PLANTS;
+    return world.calendar.seasonAt(person.home.position) !== Season.WINTER && person.home.livingPlants.length < FARMING.MAX_PLANTS;
   }
 
   priority(person, world) {

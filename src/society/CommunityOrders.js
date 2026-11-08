@@ -9,7 +9,7 @@ import { Items } from '../items/Items.js';
 import { Technologies } from '../tech/Technologies.js';
 import { Laws } from './laws/Laws.js';
 
-const winterIsNear = (world) => world.calendar.daysUntil(Season.WINTER) <= COMMUNITY.WINTER_WATCH;
+const winterIsNear = (group, world) => world.calendar.daysUntil(Season.WINTER, group.center) <= COMMUNITY.WINTER_WATCH;
 
 /** Bir teknoloji biliniyorsa o malzemeyi depoda biriktirme emri. */
 const materialOrder = (id, type, shout, skill, technologies, target) => ({
@@ -35,7 +35,7 @@ export const COMMUNITY_ORDERS = Object.freeze([
     skills: ['gathering', 'hunting', 'fishing'],
     need: (group, world) => {
       const shortage = 1 - group.stock.food / (group.size * COMMUNITY.FOOD_PER_HEAD);
-      return winterIsNear(world) ? shortage * COMMUNITY.WINTER_FOOD_WEIGHT : shortage;
+      return winterIsNear(group, world) ? shortage * COMMUNITY.WINTER_FOOD_WEIGHT : shortage;
     },
     work: (person, world) => FoodPlanner.bestAcquisition(person, world, { excludeHome: true }),
     keeps: (t) => t.isFood,
@@ -47,7 +47,7 @@ export const COMMUNITY_ORDERS = Object.freeze([
     need: (group, world) => {
       const { fuelSeconds, homes } = group.stock;
       const shortage = 1 - fuelSeconds / (homes * COMMUNITY.FUEL_PER_HOME);
-      return winterIsNear(world) ? shortage : shortage * COMMUNITY.SUMMER_FUEL_WEIGHT;
+      return winterIsNear(group, world) ? shortage : shortage * COMMUNITY.SUMMER_FUEL_WEIGHT;
     },
     work: (person, world) => ActionFactory.gatherFuel(person, world),
     keeps: (t) => t.isFuel,

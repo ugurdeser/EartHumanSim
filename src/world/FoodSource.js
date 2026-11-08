@@ -19,7 +19,7 @@ export class FoodSource extends Entity {
   available(now) {
     if (this.capacity === 0) return 0;
     if (this.lastHarvest === null) return this.capacity;
-    const regrown = Math.floor(Calendar.growthTimeBetween(this.lastHarvest, now) / this.regrowTime);
+    const regrown = Math.floor(Calendar.growthTimeBetween(this.lastHarvest, now, this.position.y) / this.regrowTime);
     return Math.min(this.capacity, this.portionsAtHarvest + regrown);
   }
 

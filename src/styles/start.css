@@ -1,0 +1,237 @@
+/* ---------- Açılış ve yükleme ekranları ---------- */
+
+.start-screen,
+.loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: radial-gradient(ellipse at 30% 40%, #121a33 0%, #05070f 70%);
+  color: #e8ecdf;
+  overflow: hidden;
+}
+
+.starfield {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+
+.start-layout {
+  position: relative;
+  display: flex;
+  gap: 18px;
+  height: 100%;
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+.start-map {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 12px;
+}
+
+.start-map h1 {
+  margin: 0;
+  font-size: 30px;
+  letter-spacing: 0.04em;
+}
+
+.start-map header p {
+  margin: 4px 0 0;
+  color: #aab3a0;
+}
+
+.planet-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.planet-map {
+  width: 100%;
+  aspect-ratio: 2 / 1;
+  border-radius: 10px;
+  border: 1px solid #3a4a6a;
+  box-shadow: 0 0 40px rgba(90, 140, 255, 0.18);
+  background: #0b1020;
+}
+
+.planet-map-info {
+  min-height: 44px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.planet-map-start {
+  font-weight: 600;
+}
+
+.planet-map-hover {
+  color: #aab3a0;
+}
+
+.start-panel {
+  width: 400px;
+  display: flex;
+  flex-direction: column;
+  background: rgba(24, 28, 22, 0.94);
+  border: 1px solid #4a5540;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.start-panel-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 16px 12px;
+}
+
+.planet-form h3 {
+  margin: 16px 0 8px;
+  color: #9aa08f;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.preset-list {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 5px;
+}
+
+.preset-list button {
+  padding: 6px 4px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 120px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  margin: 7px 0;
+  font-size: 13px;
+}
+
+.form-row .segmented,
+.form-row .seed-row {
+  grid-column: 2 / 4;
+}
+
+.form-row input[type='number'] {
+  width: 100%;
+  padding: 4px 6px;
+  background: #2a3025;
+  color: inherit;
+  border: 1px solid #45503c;
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.form-value {
+  min-width: 44px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.segmented {
+  display: flex;
+  gap: 3px;
+}
+
+.segmented button {
+  padding: 5px 2px;
+  font-size: 12px;
+}
+
+.seed-row {
+  display: flex;
+  gap: 4px;
+}
+
+.seed-row .dice {
+  flex: 0 0 38px;
+}
+
+.create-planet {
+  flex: 0 0 auto;
+  margin: 12px 16px 16px;
+  padding: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  background: #6a8f3c;
+  border-color: #8ab552;
+}
+
+/* yükleme */
+
+.loading-box {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(560px, 90vw);
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+}
+
+.loading-globe {
+  width: 280px;
+  height: 280px;
+  border-radius: 50%;
+  box-shadow: 0 0 60px rgba(120, 180, 255, 0.35);
+}
+
+.loading-box h2 {
+  margin: 6px 0 0;
+  font-weight: 600;
+}
+
+.loading-bar {
+  width: 100%;
+  height: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  overflow: hidden;
+}
+
+.loading-fill {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, #4f8fd6, #8ab552);
+  transition: width 0.15s;
+}
+
+.loading-row {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  color: #aab3a0;
+  font-size: 14px;
+}
+
+.loading-screen.failed .loading-stage {
+  color: #ff8a7a;
+}
+
+.loading-screen.closing {
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+/* oyun içinden yeni gezegen */
+
+.settings-window .new-planet {
+  width: 100%;
+  margin-top: 14px;
+  padding: 7px;
+}
