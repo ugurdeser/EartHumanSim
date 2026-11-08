@@ -1,5 +1,6 @@
 import { FEATURES, PLANET, WORLD } from '../config.js';
 import { Vector2 } from '../core/Vector2.js';
+import { FeatureRegions } from './FeatureRegions.js';
 import { Mine } from './Mine.js';
 import { Outline } from './Outline.js';
 import { ALL_MINE_TYPES } from './MineTypes.js';
@@ -11,7 +12,8 @@ const BASIN_STEPS = 6;
 const BASIN_DIRECTIONS = 8;
 
 /**
- * Seyrek ama kalıcı yapıları tüm harita için baştan üretir: göletler, madenler.
+ * Seyrek ama kalıcı yapılar: göletler, madenler. Başlangıç çevresi tam yoğunlukta baştan üretilir;
+ * gezegenin geri kalanı seyrek, bölge bölge ve gerektikçe (FeatureRegions).
  * Bitkiler ise ChunkGenerator ile gerektikçe üretilir.
  */
 export class FeatureGenerator {
@@ -20,19 +22,33 @@ export class FeatureGenerator {
   }
 
   generate(world, startCenter) {
-    this.#placePonds(world, this.#points(world, startCenter, FEATURES.POND_DENSITY));
-    for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, this.#points(world, startCenter, type.density));
+    const homeSide = PLANET.HOME_RADIUS * 2;
+    const home = (density) => this.#scatter(this.rng, startCenter.x - homeSide / 2, startCenter.y - homeSide / 2, homeSide, homeSide, density);
+    this.#placePonds(world, this.rng, home(FEATURES.POND_DENSITY));
+    for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, home(type.density));
+
+    const regions = new FeatureRegions(world.width, world.height, this.rng.seed, (rng, minX, minY, maxX, maxY) => this.#populate(world, rng, minX, minY, maxX, maxY));
+    const ensure = (...rect) => regions.ensure(...rect);
+    world.pondGrid.onQuery = ensure;
+    world.mineGrid.onQuery = ensure;
+    world.featureRegions = regions;
+    regions.generateAllIfSmall();
+
     this.#guaranteeStartArea(world, startCenter);
   }
 
-  /** Başlangıç çevresinde tam yoğunlukta, gezegenin geri kalanında seyrek noktalar. */
-  #points(world, center, density) {
-    const homeSide = PLANET.HOME_RADIUS * 2;
-    const homeCount = Math.round(((homeSide * homeSide) / KM2) * density);
-    const farCount = Math.round(((world.width * world.height) / KM2) * density * PLANET.SPARSE);
-    const home = Array.from({ length: homeCount }, () => new Vector2(center.x + this.rng.range(-homeSide / 2, homeSide / 2), center.y + this.rng.range(-homeSide / 2, homeSide / 2)));
-    const far = Array.from({ length: farCount }, () => new Vector2(this.rng.range(0, world.width), this.rng.range(0, world.height)));
-    return [...home, ...far];
+  /** Uzak bir bölgenin seyrek göletleri ve madenleri. */
+  #populate(world, rng, minX, minY, maxX, maxY) {
+    const scatter = (density) => this.#scatter(rng, minX, minY, maxX - minX, maxY - minY, density * PLANET.SPARSE);
+    this.#placePonds(world, rng, scatter(FEATURES.POND_DENSITY));
+    for (const type of ALL_MINE_TYPES) this.#placeMines(world, type, scatter(type.density));
+  }
+
+  /** Alana yoğunluğa göre rastgele noktalar (beklenen sayının kesri de olasılıkla eklenir). */
+  #scatter(rng, x, y, width, height, density) {
+    const expected = ((width * height) / KM2) * density;
+    const count = Math.floor(expected) + (rng.next() < expected % 1 ? 1 : 0);
+    return Array.from({ length: count }, () => new Vector2(x + rng.range(0, width), y + rng.range(0, height)));
   }
 
   /** Noktanın çevresindeki yönler. */
@@ -58,10 +74,10 @@ export class FeatureGenerator {
     return point;
   }
 
-  #pond(world, start) {
+  #pond(world, rng, start) {
     const position = this.#basin(world, start);
-    const radius = this.rng.range(25, 90);
-    const outline = Outline.ofWater(world.terrain, position.x, position.y, radius, this.rng);
+    const radius = rng.range(25, 90);
+    const outline = Outline.ofWater(world.terrain, position.x, position.y, radius, rng);
     return new Pond(position.x, position.y, { radius, outline });
   }
 
@@ -69,14 +85,16 @@ export class FeatureGenerator {
     return new Mine(position.x, position.y, { resource: type.resource, name: type.name, color: type.color });
   }
 
-  #placePonds(world, points) {
+  #placePonds(world, rng, points) {
     for (const p of points) {
-      if (world.isPassable(p.x, p.y)) world.addPond(this.#pond(world, p));
+      world.clampPosition(p);
+      if (world.isPassable(p.x, p.y)) world.addPond(this.#pond(world, rng, p));
     }
   }
 
   #placeMines(world, type, points) {
     for (const p of points) {
+      world.clampPosition(p);
       if (!world.isWater(p.x, p.y, 20)) world.addMine(this.#mine(p, type));
     }
   }
@@ -84,7 +102,7 @@ export class FeatureGenerator {
   /** İlk insanların çevresinde su ve her maden türünden en az biri olsun. */
   #guaranteeStartArea(world, center) {
     const near = () => world.randomPointNear(center, WORLD.START_AREA_RADIUS);
-    for (let i = world.pondsNear(center, WORLD.START_AREA_RADIUS).length; i < 2; i++) world.addPond(this.#pond(world, near()));
+    for (let i = world.pondsNear(center, WORLD.START_AREA_RADIUS).length; i < 2; i++) world.addPond(this.#pond(world, this.rng, near()));
 
     for (const type of ALL_MINE_TYPES) {
       if (world.findNearestMine(center, type.resource, WORLD.START_AREA_RADIUS)) continue;

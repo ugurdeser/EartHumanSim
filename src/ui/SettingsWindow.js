@@ -1,5 +1,5 @@
 import { Overlay } from '../render/WeatherMaps.js';
-import { Quality } from '../settings/DisplaySettings.js';
+import { Lod, Quality } from '../settings/DisplaySettings.js';
 import { el, startWindowDrag } from './dom.js';
 
 /** Ayarlar penceresi (⚙ / F2): görüntü kalitesi ve ağır katmanların açılıp kapanması. */
@@ -10,6 +10,11 @@ export class SettingsWindow {
       'select',
       { onChange: () => settings.set('quality', this.quality.value) },
       Object.values(Quality).map((q) => el('option', { value: q.id, text: q.label })),
+    );
+    this.lod = el(
+      'select',
+      { onChange: () => settings.set('lod', this.lod.value) },
+      Object.values(Lod).map((l) => el('option', { value: l.id, text: l.label })),
     );
     this.overlay = el(
       'select',
@@ -37,6 +42,8 @@ export class SettingsWindow {
         el('h4', { text: 'Görüntü' }),
         el('label', { class: 'dev-row' }, 'Kalite', this.quality),
         el('p', { class: 'hint', text: 'Yüksek çözünürlüklü ekranda takılma olursa Orta ya da Düşük seçin: daha az piksel hesaplanır, görüntü biraz yumuşar.' }),
+        el('label', { class: 'dev-row' }, 'Ayrıntı düzeyi (LOD)', this.lod),
+        el('p', { class: 'hint', text: 'Uzaklaştıkça sırtlar, tepeler, kıyı girintileri ve orman öbekleri ortalamalarına söner. Yüksek düzey ayrıntıyı daha uzaktan gösterir ve zemini pikselde 4 örnekle boyar; düşük düzey daha hızlıdır.' }),
         this.toggles.map(({ label, input }) => el('label', { class: 'dev-row' }, label, input)),
         el('h4', { class: 'settings-gap', text: 'Hava' }),
         el('label', { class: 'dev-row' }, 'Hava katmanı', this.overlay),
@@ -63,6 +70,7 @@ export class SettingsWindow {
 
   #sync() {
     this.quality.value = this.settings.quality.id;
+    this.lod.value = this.settings.lod.id;
     this.overlay.value = this.settings.overlay;
     for (const { key, input } of this.toggles) input.checked = this.settings[key];
   }

@@ -2,7 +2,8 @@ import { CloudField } from '../../CloudField.js';
 import { GLOBE_SHADING } from '../../GlobeLayer.js';
 import { HILLSHADE } from '../../Hillshade.js';
 import { OverviewLayer } from '../../OverviewLayer.js';
-import { f, fragment } from '../../gpu/glsl.js';
+import { f, fragment, frameUniforms } from '../../gpu/glsl.js';
+import { Planet } from '../../../core/Planet.js';
 
 const { LIMB_SHADE, NIGHT_LIGHT, TWILIGHT, OVERLAY_LIGHT } = GLOBE_SHADING;
 
@@ -68,7 +69,9 @@ export class GpuGlobePainter {
   }
 
   paint(target, { unit, sinC, cosC, centerU, sun, days }) {
+    const footprint = Planet.diameter / 2 / unit; // kürenin ortasında bir pikselin boyu (m)
     const uniforms = {
+      ...frameUniforms(this.gpuWorld.world, 0, 0, footprint * this.gpuWorld.gpu.settings.lod.bias),
       u_unit: unit,
       u_center: [sinC, cosC],
       u_centerU: centerU,

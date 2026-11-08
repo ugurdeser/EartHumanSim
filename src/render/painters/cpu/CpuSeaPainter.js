@@ -1,5 +1,5 @@
 import { COLORS } from '../../../config.js';
-import { Surface } from '../../../world/Terrain.js';
+import { Surface, Terrain } from '../../../world/Terrain.js';
 
 const PIXEL = 3; // ekran pikseli başına örnek: kıyı yumuşatılarak büyütülür
 
@@ -24,10 +24,11 @@ export class CpuSeaPainter {
     const { terrain } = this.world;
     const stepX = (bounds.maxX - bounds.minX) / width;
     const stepY = (bounds.maxY - bounds.minY) / height;
+    const detail = Terrain.detailFor(stepX * this.settings.lod.bias);
     for (let py = 0; py < height; py++) {
       const y = bounds.minY + (py + 0.5) * stepY;
       for (let px = 0; px < width; px++) {
-        const surface = terrain.surfaceAt(bounds.minX + (px + 0.5) * stepX, y);
+        const surface = terrain.surfaceAt(bounds.minX + (px + 0.5) * stepX, y, detail);
         if (surface === Surface.LAND) continue;
         const color = this.colors[surface];
         const i = (py * width + px) * 4;

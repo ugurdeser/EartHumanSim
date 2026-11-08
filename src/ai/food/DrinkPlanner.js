@@ -1,4 +1,4 @@
-import { MINUTE } from '../../config.js';
+import { DAY, MINUTE } from '../../config.js';
 import { LogType } from '../../core/EventLog.js';
 import { Capability, Items } from '../../items/Items.js';
 import { MoveToAction } from '../../actions/MoveToAction.js';
@@ -6,15 +6,16 @@ import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
 
 const JAR_SIPS = 4; // dolu testinin kaç içimlik suyu var
+const FORGET_BLOCKED = 2 * DAY; // ulaşılamayan su bu kadar süre denenmez
 
 /** Su içmek: testiden ya da göletten. */
 export class DrinkPlanner {
   static drink(person, world) {
     if (person.inventory.has(Items.WATER)) return DrinkPlanner.sip();
-    const pond = world.findNearestPond(person.position);
+    const pond = DrinkPlanner.reachablePond(person, world);
     if (!pond) return null;
     return new SequenceAction('Su içmeye gidiyor', [
-      new MoveToAction(`${pond.destination} gidiyor`, pond.shorePointFrom(person.position), { arriveDistance: 2 }),
+      new MoveToAction(`${pond.destination} gidiyor`, pond.shorePointFrom(person.position), { arriveDistance: 2, onBlocked: (p, w) => DrinkPlanner.blocked(p, w, pond) }),
       new PerformAction('Su içiyor', 5 * MINUTE, {
         onComplete: (p, w) => {
           p.needs.drink();
@@ -22,6 +23,15 @@ export class DrinkPlanner {
         },
       }),
     ]);
+  }
+
+  /** En yakın, daha önce yolu kapalı bulunmamış gölet. */
+  static reachablePond(person, world, options = {}) {
+    return world.findNearestPond(person.position, { ...options, skip: (pond) => person.unreachable.has(pond, world.now) });
+  }
+
+  static blocked(person, world, pond) {
+    person.unreachable.remember(pond, world.now + FORGET_BLOCKED);
   }
 
   static sip() {

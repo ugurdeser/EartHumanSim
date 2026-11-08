@@ -1,6 +1,6 @@
 import { DAY, FIRE, PLANTS, SIM, WORLD } from '../config.js';
 import { clamp } from '../core/MathUtils.js';
-import { wrapX } from '../core/Planet.js';
+import { Planet, wrapX } from '../core/Planet.js';
 import { Scheduler } from '../core/Scheduler.js';
 import { SpatialGrid } from '../core/SpatialGrid.js';
 import { Vector2 } from '../core/Vector2.js';
@@ -23,8 +23,8 @@ const MAX_PLANT_RADIUS = PLANTS.TREE.RADIUS[1];
 export class World {
   /** Atmosfer kurulur ama ısıtılmaz: WorldBuilder `weather.warmUp()` ile ısıtır. */
   constructor({ rng, clock, calendar, log, planet }) {
-    this.width = WORLD.WIDTH;
-    this.height = WORLD.HEIGHT;
+    this.width = Planet.width;
+    this.height = Planet.height;
     this.rng = rng;
     this.clock = clock;
     this.calendar = calendar;
@@ -190,11 +190,11 @@ export class World {
     return this.pondGrid.queryRadius(position, radius + MAX_POND_RADIUS);
   }
 
-  findNearestPond(position, { withFish = false, maxRadius = 5000 } = {}) {
+  findNearestPond(position, { withFish = false, maxRadius = 5000, skip = null } = {}) {
     return this.pondGrid.findNearest(
       position,
       maxRadius,
-      (p) => !withFish || p.hasFish,
+      (p) => (!withFish || p.hasFish) && !skip?.(p),
       (p) => Math.max(0, position.distanceTo(p.position) - p.radius),
     );
   }

@@ -89,7 +89,7 @@ export class Game {
 
   setSpeedIndex(index) {
     if (index < 0 || index >= SIM.SPEEDS.length) return;
-    this.clock.timeScale = SIM.SPEEDS[index];
+    this.clock.timeScale = SIM.SPEEDS[index].scale;
     this.clock.paused = false;
   }
 
@@ -102,9 +102,13 @@ export class Game {
     this.fastForward.cancel();
   }
 
-  /** Yüksek hızlarda adım büyür ki saniye başına adım sayısı makul kalsın. */
+  /**
+   * Yüksek hızlarda adım büyür ki saniye başına adım sayısı makul kalsın; gerçek zamanda adım
+   * kare boyuna iner ki canlılar sıçramadan yürüsün.
+   */
   get stepSize() {
-    return clamp((this.clock.timeScale * SIM.REAL_TO_SIM) / SIM.STEPS_PER_SECOND, SIM.MIN_STEP, SIM.MAX_STEP);
+    const rate = this.clock.timeScale * SIM.REAL_TO_SIM; // gerçek saniye başına oyun saniyesi
+    return clamp(rate / SIM.STEPS_PER_SECOND, Math.min(SIM.MIN_STEP, rate / SIM.SMOOTH_FRAMES), SIM.MAX_STEP);
   }
 
   // ---------- Nüfus ----------

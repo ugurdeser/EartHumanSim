@@ -165,9 +165,10 @@ export class Camera {
     return px / this.zoom;
   }
 
-  applyTo(ctx, dpr) {
+  /** Tuvalin dönüşümü: harita noktası `origin`e göre verilir (OffsetContext ile çizilir). */
+  applyTo(ctx, dpr, origin = { x: 0, y: 0 }) {
     const scale = this.zoom * dpr;
     const scaleX = scale * this.sceneStretch;
-    ctx.setTransform(scaleX, 0, 0, scale, this.width / 2 * dpr - this.x * scaleX, (this.height / 2 - this.y * this.zoom) * dpr);
+    ctx.setTransform(scaleX, 0, 0, scale, (this.width / 2) * dpr - (this.x - origin.x) * scaleX, (this.height / 2 - (this.y - origin.y) * this.zoom) * dpr);
   }
 }

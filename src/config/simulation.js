@@ -1,6 +1,6 @@
 export const WORLD = Object.freeze({
-  // ~80 km çaplı gezegen, enlem-boylam düzlemine açılmış: doğu-batı sarar, kuzey-güney kutuplarda biter.
-  // Genişlik parça ve ızgara boylarının tam katı olmalı (dikiş görünmesin).
+  // En küçük (temel) gezegen: ~80 km çaplı, enlem-boylam düzlemine açılmış. Oyundaki boy gezegen
+  // ayarlarından gelir (core/Planet.js); her boy parça ve ızgara boylarının tam katı olmalı (dikiş görünmesin).
   WIDTH: 252000, // ekvator çevresi
   HEIGHT: 126000, // kutuptan kutba
   CHUNK_SIZE: 250, // bitkiler bu boyutta parçalar halinde, gerektikçe üretilir
@@ -21,25 +21,30 @@ export const PLANET = Object.freeze({
   FERTILITY_FAR: 0.45, // uzak diyarlarda bitki örtüsü çarpanı
 });
 
-// Yıldız sistemi, Güneş-Dünya oranlarıyla (gezegen çapı = 1)
+// Yıldız sistemi, Güneş-Dünya oranlarıyla (gezegen çapı = 1): gerçek boyda Güneş 1,39 milyon km
+// çapında ve 149,6 milyon km uzakta; küçük gezegende orantılı olarak yakın ve küçük.
 export const STAR = Object.freeze({
-  DIAMETER: 109.2, // ~8.700 km
-  DISTANCE: 11740, // ~940.000 km
+  DIAMETER: 109.2,
+  DISTANCE: 11740,
 });
-
-// Bulut katmanı, Dünya'daki 2-12 km yüksekliğin gezegen çapına oranıyla
-const REAL_PLANET_KM = 12742;
-const PLANET_DIAMETER = WORLD.WIDTH / Math.PI;
-export const CLOUD_ALTITUDE = Object.freeze([(2 / REAL_PLANET_KM) * PLANET_DIAMETER, (12 / REAL_PLANET_KM) * PLANET_DIAMETER]); // ~13-76 m
 
 export const SIM = Object.freeze({
   REAL_TO_SIM: 540, // 1x hızda 1 gerçek saniye = 9 simülasyon dakikası (500x: 90 günlük mevsim ≈ 29 sn)
-  MIN_STEP: 2, // simülasyon adımı (sn); yüksek hızlarda büyür
+  MIN_STEP: 2, // simülasyon adımı (sn); yüksek hızlarda büyür, gerçek zamanda kare başına küçülür
   MAX_STEP: 60,
+  SMOOTH_FRAMES: 120, // yavaş hızlarda adım, saniyenin bu kadarda biri kadar oyun süresine iner (akıcı hareket)
   STEPS_PER_SECOND: 4500, // hızlı modlarda gerçek saniye başına hedeflenen adım sayısı
   MAX_STEPS_PER_FRAME: 300,
   START_HOUR: 7,
-  SPEEDS: [1, 10, 50, 200, 500],
+  // `scale`: 1x'e göre hız; kısayol tuşu. "Gerçek": 1 gerçek saniye = 1 oyun saniyesi.
+  SPEEDS: Object.freeze([
+    { label: 'Gerçek', scale: 1 / 540, key: 'Digit0', title: '1 gerçek saniye = 1 oyun saniyesi' },
+    { label: '1x', scale: 1, key: 'Digit1', title: '1 gerçek saniye = 9 oyun dakikası' },
+    { label: '10x', scale: 10, key: 'Digit2' },
+    { label: '50x', scale: 50, key: 'Digit3' },
+    { label: '200x', scale: 200, key: 'Digit4' },
+    { label: '500x', scale: 500, key: 'Digit5', title: '1 gerçek saniye ≈ 3 oyun günü' },
+  ]),
   ACTIVE_REFRESH: 30, // etkin bölge kaç sn'de bir yeniden hesaplanır
 });
 

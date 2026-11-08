@@ -8,7 +8,9 @@ import { ChunkLayer } from './ChunkLayer.js';
 import { CloudField } from './CloudField.js';
 import { FeatureLayer } from './FeatureLayer.js';
 import { GlobeLayer } from './GlobeLayer.js';
+import { GroundLayer } from './GroundLayer.js';
 import { Hillshade } from './Hillshade.js';
+import { OffsetContext } from './OffsetContext.js';
 import { OverlayLayer } from './OverlayLayer.js';
 import { OverviewLayer } from './OverviewLayer.js';
 import { Painters } from './painters/Painters.js';
@@ -64,8 +66,9 @@ export class Renderer {
       [relief, 'relief'],
       [cloudLayer, 'clouds'],
     ]); // katman → onu açıp kapatan ayar
+    const ground = painters.ground ? new GroundLayer(world, painters.ground, settings) : overview;
     this.layers = [
-      overview,
+      ground,
       relief,
       new ChunkLayer(world),
       new PlantLayer(world),
@@ -81,6 +84,12 @@ export class Renderer {
     this.dpr = 1;
     this.resize();
     settings.onChange((key) => key === 'quality' && this.resize());
+    settings.onChange((key) => key === 'lod' && this.#repaint());
+  }
+
+  /** Piksel piksel boyanan katmanlar bir sonraki karede yeniden boyansın (ayrıntı düzeyi değişti). */
+  #repaint() {
+    for (const layer of [...this.layers, this.globe]) if ('painted' in layer) layer.painted = '';
   }
 
   /** Tuval, ekran pikselinin kalite oranı kadarıyla çizilir; tarayıcı ekrana büyütür. */
@@ -193,13 +202,16 @@ export class Renderer {
   #drawLayers(ctx, camera, dpr, shift) {
     const { world } = this;
     camera.x += shift;
-    camera.applyTo(ctx, dpr);
+    // katmanlar harita metresiyle çizer; konumlar kameranın baktığı noktaya göre iletilir
+    const origin = { x: camera.x, y: camera.y };
+    camera.applyTo(ctx, dpr, origin);
+    const local = OffsetContext.wrap(ctx, origin.x, origin.y);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, world.width, world.height);
+    local.rect(0, 0, world.width, world.height);
     ctx.clip();
     for (const layer of this.layers) {
-      if (this.#isShown(layer)) layer.draw(ctx, camera);
+      if (this.#isShown(layer)) layer.draw(local, camera);
     }
     ctx.restore();
     camera.x -= shift;

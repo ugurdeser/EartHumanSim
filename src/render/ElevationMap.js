@@ -1,5 +1,5 @@
 import { clamp01 } from '../core/MathUtils.js';
-import { Surface } from '../world/Terrain.js';
+import { Surface, Terrain } from '../world/Terrain.js';
 
 const ALPHA = 0.78;
 
@@ -45,14 +45,15 @@ export class ElevationMap {
     let deepest = terrain.seaLevel;
     for (const h of terrain.heights) deepest = Math.min(deepest, h);
     const cell = terrain.cellSize;
+    const detail = Terrain.detailFor(cell);
     for (let row = 0; row < height; row++) {
       for (let col = 0; col < width; col++) {
         const i = row * width + col;
-        const surface = terrain.surfaceAt(col * cell, row * cell);
+        const surface = terrain.surfaceAt(col * cell, row * cell, detail);
         let color;
         if (surface === Surface.ICE) color = ICE_COLOR;
         else if (surface === Surface.SEA) color = SEA_COLORS((terrain.seaLevel - terrain.heights[i]) / (terrain.seaLevel - deepest || 1));
-        else color = LAND_COLORS(terrain.elevations[i]);
+        else color = LAND_COLORS(terrain.elevationAt(col * cell, row * cell, detail));
         pixels.set([color[0], color[1], color[2], this.alpha * 255], i * 4);
       }
     }

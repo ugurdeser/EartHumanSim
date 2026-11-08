@@ -2,6 +2,7 @@ import { COLORS, FIRE, ROAD } from '../config.js';
 import { DotPainter } from './DotPainter.js';
 
 const LABEL_ZOOM = 0.5;
+const MINE_ZOOM = 0.01; // px/m: bundan uzakta madenler çizilmez (sabit boylu noktalar uzaktan yığılır)
 const FENCE_POST = 0.4; // m: çit noktasının yarıçapı
 const POND_REACH = 131;
 
@@ -28,7 +29,7 @@ export class FeatureLayer {
     if (camera.zoom >= LABEL_ZOOM) {
       for (const pond of waters) this.#label(ctx, camera, pond.mapLabel, pond.position.x, pond.position.y, '#1f5f96');
     }
-    inView(this.world.mineGrid, (mine) => this.#drawMine(ctx, camera, mine));
+    if (camera.zoom >= MINE_ZOOM) inView(this.world.mineGrid, (mine) => this.#drawMine(ctx, camera, mine));
     inView(this.world.homeGrid, (home) => this.#drawHome(ctx, camera, home), 50);
     for (const pen of this.world.pens) this.#drawPen(ctx, camera, pen);
     for (const group of this.world.social.groups.groups) this.#drawVillage(ctx, camera, group);

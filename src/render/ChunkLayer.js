@@ -1,5 +1,6 @@
 import { Calendar } from '../core/Calendar.js';
 import { DotPainter } from './DotPainter.js';
+import { OffsetContext } from './OffsetContext.js';
 import { OverviewLayer } from './OverviewLayer.js';
 
 const BITMAP = 96; // parça resmi kenarı (piksel)
@@ -58,11 +59,12 @@ export class ChunkLayer {
     const ctx = canvas.getContext('2d');
     const size = chunk.maxX - chunk.minX;
     const scale = BITMAP / size;
-    ctx.setTransform(scale, 0, 0, scale, -chunk.minX * scale, -chunk.minY * scale);
+    ctx.setTransform(scale, 0, 0, scale, 0, 0);
+    const local = OffsetContext.wrap(ctx, chunk.minX, chunk.minY); // büyük gezegende konumlar kaymasın
     const radiusOf = (p) => Math.max(p.radius, MIN_DOT_PX / scale);
-    DotPainter.batch(ctx, chunk.grass, season.palette.grass, radiusOf);
-    DotPainter.batch(ctx, chunk.bushes, season.palette.bush, radiusOf);
-    DotPainter.batch(ctx, chunk.standingTrees, season.palette.tree, radiusOf);
+    DotPainter.batch(local, chunk.grass, season.palette.grass, radiusOf);
+    DotPainter.batch(local, chunk.bushes, season.palette.bush, radiusOf);
+    DotPainter.batch(local, chunk.standingTrees, season.palette.tree, radiusOf);
     return { canvas, version: chunk.version, season };
   }
 

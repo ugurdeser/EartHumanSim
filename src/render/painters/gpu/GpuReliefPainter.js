@@ -1,5 +1,5 @@
 import { HILLSHADE } from '../../Hillshade.js';
-import { boundsUniform, f, fragment } from '../../gpu/glsl.js';
+import { boundsUniforms, f, fragment } from '../../gpu/glsl.js';
 
 const BODY = `
 void main() {
@@ -24,6 +24,6 @@ export class GpuReliefPainter {
   }
 
   paint(target, { bounds }) {
-    this.gpuWorld.paint(target, this.program, { u_bounds: boundsUniform(bounds) });
+    this.gpuWorld.paint(target, this.program, boundsUniforms(this.gpuWorld.world, bounds, target.width, this.gpuWorld.gpu.settings.lod.bias));
   }
 }

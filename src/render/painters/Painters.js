@@ -6,6 +6,7 @@ import { CpuReliefPainter } from './cpu/CpuReliefPainter.js';
 import { CpuSeaPainter } from './cpu/CpuSeaPainter.js';
 import { GpuCloudPainter } from './gpu/GpuCloudPainter.js';
 import { GpuGlobePainter } from './gpu/GpuGlobePainter.js';
+import { GpuGroundPainter } from './gpu/GpuGroundPainter.js';
 import { GpuReliefPainter } from './gpu/GpuReliefPainter.js';
 import { GpuSeaPainter } from './gpu/GpuSeaPainter.js';
 
@@ -25,6 +26,7 @@ export class Painters {
           sea: new GpuSeaPainter(gpuWorld),
           cloud: new GpuCloudPainter(gpuWorld),
           globe: new GpuGlobePainter(gpuWorld, overview),
+          ground: new GpuGroundPainter(gpuWorld),
         };
       } catch (error) {
         console.warn('WebGL boyayıcıları kurulamadı, işlemciyle çizilecek:', error);
@@ -36,6 +38,7 @@ export class Painters {
       sea: new CpuSeaPainter(world, settings),
       cloud: new CpuCloudPainter(world, clouds, maps, settings),
       globe: new CpuGlobePainter(world, overview, clouds, hillshade, maps, settings),
+      ground: null, // işlemcide zemin her karede boyanamaz: uzak haritanın resmi kullanılır
     };
   }
 }

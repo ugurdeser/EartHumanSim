@@ -33,8 +33,11 @@ export class HungerDrive extends Drive {
 
   createAction(person, world) {
     if (person.isDependent) return this.#eatWhatIsGiven(person);
+    // Üzerindeki yiyeceği yemek birkaç dakika sürer: susuzken de önce onu yer, sonra suya gider
+    if (person.inventory.foodCount > 0 && person.needs.food < FED_ENOUGH) return this.#eatCarried(person);
     const thirsty = person.needs.water <= person.needs.food; // eşitlikte su: susuzluk daha çabuk öldürür
-    return thirsty ? DrinkPlanner.drink(person, world) : this.#eat(person, world);
+    if (!thirsty) return this.#eat(person, world);
+    return DrinkPlanner.drink(person, world) ?? ActionFactory.searchFar(person, world, 'Uzaklarda su arıyor');
   }
 
   /** Küçük çocuk getirileni ya da evdeki yiyeceği yer; suyunu da yakınları verir. */

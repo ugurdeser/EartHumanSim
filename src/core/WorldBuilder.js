@@ -7,6 +7,7 @@ import { FeatureGenerator } from '../world/FeatureGenerator.js';
 import { PlanetSettings } from '../world/PlanetSettings.js';
 import { World } from '../world/World.js';
 import { Calendar } from './Calendar.js';
+import { Planet } from './Planet.js';
 import { EventLog, LogType } from './EventLog.js';
 import { breathe, LoadStage } from './LoadStage.js';
 import { Random } from './Random.js';
@@ -48,6 +49,7 @@ export class WorldBuilder {
   /** Kurulum adımları: her `yield` { stage, progress } ilerlemeyi bildirir. */
   static *#steps(planet) {
     yield { stage: LoadStage.TERRAIN, progress: 0 };
+    Planet.resize(planet.circumference);
     const rng = new Random(planet.seed);
     const clock = new SimulationClock(SIM.START_HOUR * HOUR);
     const calendar = new Calendar(clock);

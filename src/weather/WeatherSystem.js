@@ -21,6 +21,7 @@ export class WeatherSystem {
     this.log = log;
     this.terrain = terrain;
     this.planet = planet;
+    this.peakAltitude = planet.peakAltitude; // m (Dünya ölçeği): arazinin 0..1 yükseltisi bununla çarpılır
     this.atmosphere = new Atmosphere({ width, height, terrain, seed, sunXAt, climate: WeatherSystem.#climateOf(planet) });
     this.cells = new Array(this.atmosphere.grid.size).fill(null);
     this.paused = false; // geliştirici paneli: hava olduğu gibi kalır
@@ -64,11 +65,6 @@ export class WeatherSystem {
 
   at(position) {
     return this.atCell(this.grid.cellAt(position.x, position.y));
-  }
-
-  /** En yüksek dağın yüksekliği (m, Dünya ölçeği): arazinin 0..1 yükseltisi bununla çarpılır. */
-  get peakAltitude() {
-    return this.planet.peakAltitude;
   }
 
   /** Noktanın gerçek yüksekliğine göre hava sıcaklığı (komşu hücreler harmanlanır). */

@@ -1,6 +1,6 @@
-import { CLOUDS, CLOUD_ALTITUDE, DAY } from '../config.js';
+import { CLOUDS, DAY } from '../config.js';
 import { clamp, smoothstep } from '../core/MathUtils.js';
-import { latitudeOf } from '../core/Planet.js';
+import { latitudeOf, Planet } from '../core/Planet.js';
 import { fitCanvas } from './fitCanvas.js';
 
 const MAX_SLOPE = 3; // alçak güneşte gölge yüksekliğin en çok bu katı
@@ -28,7 +28,8 @@ export class CloudLayer {
 
   /** Gölgenin yüksekliğe oranı: güneş alçaldıkça uzar, sabah batıya, akşam doğuya düşer. */
   #shadowOffset() {
-    const height = (CLOUD_ALTITUDE[0] + CLOUD_ALTITUDE[1]) / 2;
+    const [low, high] = Planet.cloudAltitude;
+    const height = (low + high) / 2;
     const hourAngle = ((this.world.now % DAY) / DAY - 0.5) * Math.PI * 2;
     const day = Math.abs(hourAngle) < Math.PI / 2;
     return { x: day ? height * clamp(Math.tan(hourAngle), -MAX_SLOPE, MAX_SLOPE) : 0, y: -height * Math.tan(Math.abs(latitudeOf(this.world.start.y))) };

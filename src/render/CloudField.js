@@ -1,14 +1,13 @@
-import { WORLD } from '../config.js';
 import { lerp, smoothstep } from '../core/MathUtils.js';
-import { seamless } from '../core/Planet.js';
+import { Planet, seamless } from '../core/Planet.js';
 import { Random } from '../core/Random.js';
 import { ValueNoise } from '../core/ValueNoise.js';
 
 const WIDTH = 1536;
 const HEIGHT = 768;
 const SEED = 0xc10d;
-const SCALE = 1700; // m: bulut kümelerinin tipik boyu (Dünya ölçeğinde ~270 km); yeri ve miktarı modelden
-const FRONT_SCALE = 7000; // m: kümelerin kıvrılıp dizildiği şeritler (Dünya ölçeğinde ~1.100 km)
+const SCALE = 1700; // m (küçük gezegende; boyla büyür): bulut kümelerinin tipik boyu (Dünya'da ~270 km); yeri ve miktarı modelden
+const FRONT_SCALE = 7000; // m (küçük gezegende): kümelerin kıvrılıp dizildiği şeritler (Dünya'da ~1.100 km)
 const SWIRL = 1.1; // örüntünün kıvrılması
 const SAMPLES = 20000;
 const EDGE = 0.035; // bulut kenarının yumuşaklığı
@@ -44,15 +43,17 @@ export class CloudField {
     const rng = new Random(SEED);
     const detail = new ValueNoise(rng);
     const swirl = new ValueNoise(rng);
+    const scale = SCALE * Planet.scale;
+    const frontScale = FRONT_SCALE * Planet.scale;
     this.values = new Float32Array(WIDTH * HEIGHT);
     for (let row = 0; row < HEIGHT; row++) {
       if (row % rowsPerStep === 0) yield row / HEIGHT;
-      const y = ((row + 0.5) / HEIGHT) * WORLD.HEIGHT;
+      const y = ((row + 0.5) / HEIGHT) * Planet.height;
       for (let col = 0; col < WIDTH; col++) {
-        const x = ((col + 0.5) / WIDTH) * WORLD.WIDTH;
+        const x = ((col + 0.5) / WIDTH) * Planet.width;
         this.values[row * WIDTH + col] = seamless(x, (sx) => {
-          const bend = swirl.fractal(sx / FRONT_SCALE, y / FRONT_SCALE, 3) * SWIRL;
-          return detail.fractal(sx / SCALE + bend, y / SCALE + bend * 0.5, 5, 0.6) * 0.7 + bend * 0.27;
+          const bend = swirl.fractal(sx / frontScale, y / frontScale, 3) * SWIRL;
+          return detail.fractal(sx / scale + bend, y / scale + bend * 0.5, 5, 0.6) * 0.7 + bend * 0.27;
         });
       }
     }

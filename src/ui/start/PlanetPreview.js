@@ -1,11 +1,10 @@
-import { WORLD } from '../../config.js';
-import { latitudeOf } from '../../core/Planet.js';
+import { latitudeOf, Planet } from '../../core/Planet.js';
 import { Random } from '../../core/Random.js';
 import { ElevationMap } from '../../render/ElevationMap.js';
 import { Surface, Terrain } from '../../world/Terrain.js';
 import { el } from '../dom.js';
 
-const PREVIEW_CELL = 400; // m: önizlemenin arazi ızgarası (oyundakinin 2 katı kaba, ~4 kat hızlı)
+const PREVIEW_COLS = 630; // önizlemenin arazi ızgarası (oyundakinin yarısı sık, ~4 kat hızlı)
 const MAP_WIDTH = 1200; // tuvalin iç çözünürlüğü (harita 2:1)
 const MAP_HEIGHT = 600;
 const REGENERATE_DELAY = 120; // ms: ayar sürüklenirken her adımda üretmesin
@@ -52,7 +51,8 @@ export class PlanetPreview {
 
   #generate() {
     const { planet } = this;
-    this.terrain = new Terrain(new Random(planet.seed), planet, { cell: PREVIEW_CELL });
+    Planet.resize(planet.circumference);
+    this.terrain = new Terrain(new Random(planet.seed), planet, { cols: PREVIEW_COLS });
     this.elevation = new ElevationMap(this.terrain, { alpha: 1 }).ensure();
     this.landKey = planet.landKey;
     if (planet.start && this.terrain.surfaceAt(planet.start.x, planet.start.y) !== Surface.LAND) planet.start = null; // yer denize kaldı
@@ -61,7 +61,7 @@ export class PlanetPreview {
 
   #toWorld(e) {
     const rect = this.canvas.getBoundingClientRect();
-    return { x: ((e.clientX - rect.left) / rect.width) * WORLD.WIDTH, y: ((e.clientY - rect.top) / rect.height) * WORLD.HEIGHT };
+    return { x: ((e.clientX - rect.left) / rect.width) * Planet.width, y: ((e.clientY - rect.top) / rect.height) * Planet.height };
   }
 
   #describe(point) {
@@ -127,8 +127,8 @@ export class PlanetPreview {
       this.startInfo.textContent = '📍 Başlangıç yeri seçilmedi: haritada bir karaya tıklayın (seçmezseniz ılıman kuşakta bir yer seçilir).';
       return;
     }
-    const x = (start.x / WORLD.WIDTH) * MAP_WIDTH;
-    const y = (start.y / WORLD.HEIGHT) * MAP_HEIGHT;
+    const x = (start.x / Planet.width) * MAP_WIDTH;
+    const y = (start.y / Planet.height) * MAP_HEIGHT;
     ctx.save();
     ctx.strokeStyle = '#ffffff';
     ctx.fillStyle = '#ff5a4f';

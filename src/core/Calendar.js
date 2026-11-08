@@ -1,4 +1,5 @@
-import { CALENDAR, DAY, WORLD } from '../config.js';
+import { CALENDAR, DAY } from '../config.js';
+import { Planet } from './Planet.js';
 import { SEASON_ORDER } from './Season.js';
 
 const SEASON_LENGTH = CALENDAR.DAYS_PER_SEASON * DAY;
@@ -21,7 +22,7 @@ export class Calendar {
 
   /** Güney yarıkürede mevsimler yarım yıl kayıktır. `y`: harita y'si (verilmezse kuzey). */
   static #shift(y) {
-    return y > WORLD.HEIGHT / 2 ? YEAR_LENGTH / 2 : 0;
+    return y > Planet.height / 2 ? YEAR_LENGTH / 2 : 0;
   }
 
   static seasonAt(time, y = 0) {

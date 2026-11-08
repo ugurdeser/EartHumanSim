@@ -1,3 +1,4 @@
+import { Terrain } from '../../../world/Terrain.js';
 import { HILLSHADE } from '../../Hillshade.js';
 
 const PIXEL = 3; // ekran pikseli başına örnek: yumuşatılarak büyütülür
@@ -20,12 +21,14 @@ export class CpuReliefPainter {
     const { hillshade } = this;
     const stepX = (bounds.maxX - bounds.minX) / width;
     const stepY = (bounds.maxY - bounds.minY) / height;
+    const detail = Terrain.detailFor(stepX * this.settings.lod.bias);
+    const spread = Math.max(this.hillshade.world.terrain.slopeSpread, stepX);
     for (let py = 0; py < height; py++) {
       const y = bounds.minY + (py + 0.5) * stepY;
       for (let px = 0; px < width; px++) {
         const x = bounds.minX + (px + 0.5) * stepX;
-        const light = hillshade.lightAt(x, y);
-        const snow = hillshade.snowAt(x, y);
+        const light = hillshade.lightAt(x, y, detail, spread);
+        const snow = hillshade.snowAt(x, y, detail);
         const color = light < 0 ? HILLSHADE.SNOW_BRIGHTNESS * snow * (1 + light) : 255;
         const i = (py * width + px) * 4;
         image.data[i] = color;

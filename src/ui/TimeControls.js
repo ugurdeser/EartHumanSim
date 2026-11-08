@@ -10,7 +10,7 @@ export class TimeControls {
     this.weatherLabel = el('div', { class: 'weather' });
     this.pauseButton = el('button', { onClick: () => game.togglePause() });
     this.speedButtons = SIM.SPEEDS.map((speed, i) =>
-      el('button', { text: `${speed}x`, title: `Kısayol: ${i + 1}`, onClick: () => game.setSpeedIndex(i) }),
+      el('button', { text: speed.label, title: `${speed.title ? `${speed.title} · ` : ''}Kısayol: ${speed.key.slice(5)}`, onClick: () => game.setSpeedIndex(i) }),
     );
     this.skipButtons = SKIP_DAYS.map((days) => el('button', { text: `+${days}g`, title: `${days} gün ileri sar`, onClick: () => game.skipDays(days) }));
     this.skipStatus = el('div', { class: 'skip-status' });
@@ -42,7 +42,7 @@ export class TimeControls {
     this.weatherLabel.textContent = `${clock.formatTime()} ${clock.isNight ? '🌙' : '🕑'} · ${temperature.toFixed(0)}°C · ${local.describe()}`;
     this.weatherLabel.title = `Baktığın yer · rüzgâr ${local.wind.toFixed(0)} m/s ${local.windFrom} · ${local.pressure.toFixed(0)} hPa · bulut %${Math.round(local.cover * 100)}`;
     this.pauseButton.textContent = clock.paused ? '▶' : '⏸';
-    this.speedButtons.forEach((button, i) => button.classList.toggle('active', SIM.SPEEDS[i] === clock.timeScale));
+    this.speedButtons.forEach((button, i) => button.classList.toggle('active', SIM.SPEEDS[i].scale === clock.timeScale));
     this.#updateSkip();
   }
 

@@ -1,3 +1,4 @@
+import { SIM } from '../config.js';
 import { AgentLayer } from '../render/AgentLayer.js';
 import { ChunkLayer } from '../render/ChunkLayer.js';
 import { FeatureLayer } from '../render/FeatureLayer.js';
@@ -119,8 +120,8 @@ export class InputController {
     if (e.code === 'Space') {
       e.preventDefault();
       this.game.togglePause();
-    } else if (/^Digit[1-9]$/.test(e.code)) {
-      this.game.setSpeedIndex(Number(e.code.slice(5)) - 1);
+    } else if (SIM.SPEEDS.some((speed) => speed.key === e.code)) {
+      this.game.setSpeedIndex(SIM.SPEEDS.findIndex((speed) => speed.key === e.code));
     } else if (e.code === 'KeyF' && this.selection.person) {
       this.selection.follow = !this.selection.follow;
     } else if (e.code === 'Escape') {

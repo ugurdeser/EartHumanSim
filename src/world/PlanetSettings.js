@@ -1,8 +1,22 @@
+import { WORLD } from '../config.js';
+
 const STORAGE_KEY = 'takilmaca.planet';
 
 const option = (id, label, values) => Object.freeze({ id, label, ...values });
 
-/** Kıtaların boyu: büyük ölçekli gürültü tek dev kıta, küçük ölçekli takımadalar verir. */
+/**
+ * Gezegenin boyu (ekvator çevresi, m). Arazinin biçimi boyla birlikte büyür (kıtalar, dağ kuşakları,
+ * buzullar); sırtlar, tepeler, göletler ve canlılar her boyda gerçek ölçüsündedir. Atmosfer her boyda
+ * Dünya fiziğiyle hesaplanır: gerçek boyda rüzgâr, bulut ve fırtınalar yere göre Dünya'daki gibi akar.
+ */
+export const Size = Object.freeze({
+  SMALL: option('small', 'Küçük', { circumference: WORLD.WIDTH, hint: '252 km' }),
+  MEDIUM: option('medium', 'Orta', { circumference: 1_260_000, hint: '1.260 km' }),
+  LARGE: option('large', 'Büyük', { circumference: 6_300_000, hint: '6.300 km' }),
+  EARTH: option('earth', 'Gerçek Dünya', { circumference: 40_075_000, hint: '40.075 km' }),
+});
+
+/** Kıtaların boyu (en küçük gezegende; gezegen büyüdükçe orantılı büyür): büyük ölçekli gürültü tek dev kıta, küçük ölçekli takımadalar verir. */
 export const Continents = Object.freeze({
   ONE: option('one', 'Tek dev kıta', { scale: 42000 }),
   SEVERAL: option('several', 'Birkaç kıta', { scale: 20000 }),
@@ -16,7 +30,7 @@ export const Relief = Object.freeze({
   RUGGED: option('rugged', 'Çok dağlık', { belt: [0.36, 0.5], peak: 7500 }),
 });
 
-/** Kutuptan bu kadar uzağa kadar aşılamaz buzul (m). */
+/** Kutuptan bu kadar uzağa kadar aşılamaz buzul (m, en küçük gezegende; boyla orantılı). */
 export const IceCaps = Object.freeze({
   NARROW: option('narrow', 'Dar', { margin: 8000 }),
   NORMAL: option('normal', 'Normal', { margin: 15400 }),
@@ -45,9 +59,10 @@ export const Storminess = Object.freeze({
 });
 
 /** Seçenek grupları: ayar adı → seçenekler. */
-export const PLANET_OPTIONS = Object.freeze({ continents: Continents, relief: Relief, iceCaps: IceCaps, warmth: Warmth, wetness: Wetness, storms: Storminess });
+export const PLANET_OPTIONS = Object.freeze({ size: Size, continents: Continents, relief: Relief, iceCaps: IceCaps, warmth: Warmth, wetness: Wetness, storms: Storminess });
 
 const DEFAULTS = Object.freeze({
+  size: 'small',
   seaShare: 0.4,
   continents: 'several',
   relief: 'normal',
@@ -76,7 +91,9 @@ export const PRESETS = Object.freeze([
  */
 export class PlanetSettings {
   constructor(values = {}) {
-    Object.assign(this, DEFAULTS, { seed: Math.floor(Math.random() * 1e9), start: null }, values);
+    const { start, ...rest } = values;
+    Object.assign(this, DEFAULTS, { seed: Math.floor(Math.random() * 1e9), startAt: null }, rest);
+    if (start) this.startAt = { u: start.x / WORLD.WIDTH, v: start.y / WORLD.HEIGHT }; // eski kayıt: küçük gezegenin metresiyle
   }
 
   /** Seçenek nesnesi (ör. `option('relief')` → Relief.NORMAL). */
@@ -85,8 +102,18 @@ export class PlanetSettings {
     return choices.find((o) => o.id === this[name]) ?? choices.find((o) => o.id === DEFAULTS[name]);
   }
 
+  /** Ekvator çevresi (m). */
+  get circumference() {
+    return this.option('size').circumference;
+  }
+
+  /** En küçük gezegene göre kaç kat büyük. */
+  get scale() {
+    return this.circumference / WORLD.WIDTH;
+  }
+
   get continentScale() {
-    return this.option('continents').scale;
+    return this.option('continents').scale * this.scale;
   }
 
   get mountainBelt() {
@@ -98,7 +125,17 @@ export class PlanetSettings {
   }
 
   get iceMargin() {
-    return this.option('iceCaps').margin;
+    return this.option('iceCaps').margin * this.scale;
+  }
+
+  /** Seçilen başlangıç yeri, harita metresiyle (seçilmediyse null). Boydan bağımsız saklanır. */
+  get start() {
+    if (!this.startAt) return null;
+    return { x: this.startAt.u * this.circumference, y: this.startAt.v * (this.circumference / 2) };
+  }
+
+  set start(point) {
+    this.startAt = point ? { u: point.x / this.circumference, v: point.y / (this.circumference / 2) } : null;
   }
 
   get solar() {
@@ -115,12 +152,12 @@ export class PlanetSettings {
 
   /** Araziyi belirleyen ayarlar: değişince önizleme yeniden üretilir, seçilen yer geçersizleşir. */
   get landKey() {
-    return [this.seed, this.seaShare, this.continents, this.relief, this.iceCaps].join('|');
+    return [this.seed, this.size, this.seaShare, this.continents, this.relief, this.iceCaps].join('|');
   }
 
   applyPreset(preset) {
-    Object.assign(this, DEFAULTS, { population: this.population }, preset.values);
-    this.start = null;
+    Object.assign(this, DEFAULTS, { population: this.population, size: this.size }, preset.values);
+    this.startAt = null;
   }
 
   // ---------- Saklama ----------

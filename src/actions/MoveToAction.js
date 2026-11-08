@@ -6,12 +6,13 @@ import { Action } from './Action.js';
  * konum döndüren bir fonksiyon olabilir (hareketli hedefler için).
  */
 export class MoveToAction extends Action {
-  constructor(label, target, { arriveDistance = 1.5, run = false, timeout = 6 * HOUR } = {}) {
+  constructor(label, target, { arriveDistance = 1.5, run = false, timeout = 6 * HOUR, onBlocked = null } = {}) {
     super(label);
     this.resolveTarget = typeof target === 'function' ? target : () => target;
     this.arriveDistance = arriveDistance;
     this.run = run;
     this.timeout = timeout;
+    this.onBlocked = onBlocked; // yol kapalıysa (deniz) çağrılır
     this.elapsed = 0;
     this.target = null;
   }
@@ -25,7 +26,12 @@ export class MoveToAction extends Action {
 
     if (person.position.distanceTo(this.target) <= this.arriveDistance) return this.complete();
     const speed = this.run ? person.runSpeed : person.walkSpeed;
-    person.moveTowards(this.target, speed, dt, world);
-    if (person.position.distanceTo(this.target) <= this.arriveDistance) this.complete();
+    const stopped = person.moveTowards(this.target, speed, dt, world);
+    if (person.position.distanceTo(this.target) <= this.arriveDistance) return this.complete();
+    if (stopped) {
+      // Kıyıya dayandı, yol yok: saatlerce beklemek yerine vazgeçer
+      this.onBlocked?.(person, world);
+      this.fail();
+    }
   }
 }

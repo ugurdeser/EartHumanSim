@@ -1,3 +1,4 @@
+import { STAR } from '../../config.js';
 import { PLANET_OPTIONS, PRESETS } from '../../world/PlanetSettings.js';
 import { el } from '../dom.js';
 
@@ -20,6 +21,9 @@ export class PlanetForm {
       { class: 'planet-form' },
       el('h3', { text: 'Hazır gezegenler' }),
       el('div', { class: 'preset-list' }, this.presets),
+      el('h3', { text: 'Gezegen' }),
+      this.#choice('size', 'Boyut'),
+      this.#sizeHint(),
       el('h3', { text: 'Arazi' }),
       this.#seed(),
       this.#slider('seaShare', 'Deniz oranı', { min: 0.1, max: 0.85, step: 0.05, format: (v) => `%${Math.round(v * 100)}` }),
@@ -91,7 +95,7 @@ export class PlanetForm {
   #choice(key, label) {
     const options = Object.values(PLANET_OPTIONS[key]);
     const buttons = options.map((option) =>
-      el('button', { text: option.label, onClick: (e) => {
+      el('button', { text: option.label, title: option.hint ?? '', onClick: (e) => {
         e.preventDefault();
         this.planet[key] = option.id;
         this.#manual();
@@ -99,6 +103,24 @@ export class PlanetForm {
     );
     this.controls.push(() => buttons.forEach((button, i) => button.classList.toggle('active', options[i].id === this.planet.option(key).id)));
     return this.#row(label, el('div', { class: 'segmented' }, buttons));
+  }
+
+  /** Seçilen boyun ölçüleri: çap, Güneş'in uzaklığı ve büyüklüğü (Dünya oranlarıyla). */
+  #sizeHint() {
+    const hint = el('p', { class: 'hint' });
+    const km = (meters) => Math.round(meters / 1000).toLocaleString('tr-TR');
+    this.controls.push(() => {
+      const { circumference } = this.planet;
+      const diameter = circumference / Math.PI;
+      const real = this.planet.option('size').id === 'earth';
+      hint.textContent =
+        `Ekvator çevresi ${km(circumference)} km, çapı ${km(diameter)} km. Güneş ${km(diameter * STAR.DISTANCE)} km uzakta, ` +
+        `${km(diameter * STAR.DIAMETER)} km çapında. Atmosfer her boyda Dünya fiziğiyle hesaplanır` +
+        (real
+          ? ': gerçek boyda rüzgâr, bulutlar ve fırtınalar yere göre Dünya’daki hızla akar.'
+          : `; bu boyda haritanın 1 metresi Dünya’da ${Math.round(40_075_000 / circumference)} metredir, bulutlar ve fırtınalar yere göre o oranda yavaş akar.`);
+    });
+    return hint;
   }
 
   #population() {

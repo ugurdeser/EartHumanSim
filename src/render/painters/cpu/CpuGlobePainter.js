@@ -1,4 +1,5 @@
-import { wrapX } from '../../../core/Planet.js';
+import { Planet, wrapX } from '../../../core/Planet.js';
+import { Terrain } from '../../../world/Terrain.js';
 import { GLOBE_SHADING } from '../../GlobeLayer.js';
 import { HILLSHADE } from '../../Hillshade.js';
 import { OverviewLayer } from '../../OverviewLayer.js';
@@ -30,6 +31,9 @@ export class CpuGlobePainter {
     const source = this.overview.pixels;
     const { width: texWidth, height: texHeight } = OverviewLayer;
     const worldWidth = this.world.width;
+    const footprint = Planet.diameter / 2 / unit; // kürenin ortasında bir pikselin boyu (m)
+    const detail = Terrain.detailFor(footprint * this.settings.lod.bias);
+    const spread = Math.max(this.world.terrain.slopeSpread, footprint);
     for (let py = 0; py < height; py++) {
       const ny = (height / 2 - py - 0.5) / unit;
       for (let px = 0; px < width; px++) {
@@ -65,8 +69,8 @@ export class CpuGlobePainter {
         const worldY = v * this.world.height;
         const cloud = this.clouds.opacity(u, v, days, maps.thresholdAt(worldX, worldY));
         const cloudColor = maps.shadeAt(worldX, worldY) * 255;
-        const snow = Math.max(this.hillshade.snowAt(worldX, worldY), maps.snowAt(worldX, worldY));
-        const relief = 1 + this.hillshade.lightAt(worldX, worldY);
+        const snow = Math.max(this.hillshade.snowAt(worldX, worldY, detail), maps.snowAt(worldX, worldY));
+        const relief = 1 + this.hillshade.lightAt(worldX, worldY, detail, spread);
         for (let channel = 0; channel < 3; channel++) {
           const texel = source[a + channel] * wa + source[b + channel] * wb + source[c + channel] * wc + source[d + channel] * wd;
           const ground = (texel + (HILLSHADE.SNOW_BRIGHTNESS - texel) * snow) * relief;

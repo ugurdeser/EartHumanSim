@@ -1,4 +1,5 @@
 import { AGING, COMMUNITY, DAY, PERSON, WORLD } from '../config.js';
+import { Planet } from '../core/Planet.js';
 import { clamp01 } from '../core/MathUtils.js';
 import { DecisionMaker } from '../ai/DecisionMaker.js';
 import { DriveSet } from '../drives/DriveSet.js';
@@ -16,6 +17,7 @@ import { Needs } from './Needs.js';
 import { RelationshipBook } from './RelationshipBook.js';
 import { Sex } from './Sex.js';
 import { Skills } from './Skills.js';
+import { UnreachablePlaces } from './UnreachablePlaces.js';
 
 const HOME_SHELTER_RADIUS = 8;
 const FULL = 0.95;
@@ -41,8 +43,9 @@ export class Person extends Agent {
     this.inventory = new Inventory(PERSON.CARRY_CAPACITY * (0.7 + traits.strength * 0.6));
     this.drives = DriveSet.fromPersonality(personality);
     this.relations = new RelationshipBook(this, rng);
-    this.exploration = new ExplorationMap(WORLD.WIDTH, WORLD.HEIGHT, WORLD.EXPLORATION_CELL);
+    this.exploration = new ExplorationMap(Planet.width, Planet.height, WORLD.EXPLORATION_CELL);
     this.brain = new DecisionMaker(this);
+    this.unreachable = new UnreachablePlaces();
     this.history = new LifeHistory();
     this.climate = new BodyClimate(this);
     this.apprenticeship = new Apprenticeship(this);

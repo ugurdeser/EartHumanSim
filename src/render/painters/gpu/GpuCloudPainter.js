@@ -1,12 +1,12 @@
 import { CloudField } from '../../CloudField.js';
-import { boundsUniform, fragment } from '../../gpu/glsl.js';
+import { boundsUniforms, fragment } from '../../gpu/glsl.js';
 
 const BODY = `
 uniform float u_shadow;     // 1: gölge geçişi, 0: bulut geçişi
 uniform vec2 u_offset;      // gölgenin buluta göre kayması (m)
 
 void main() {
-  vec2 p = worldAt(pixelCenter());
+  vec2 p = absoluteOf(worldAt(pixelCenter()));
   if (u_shadow > 0.5) {
     // gölge, güneşin ters yönünde kaymış buluttur
     float shade = cloudOpacity(mod(p.x - u_offset.x, WORLD_W) / WORLD_W, clamp((p.y - u_offset.y) / WORLD_H, 0.0, 1.0));
@@ -34,7 +34,7 @@ export class GpuCloudPainter {
 
   paint(targets, { bounds, days, offset }) {
     const uniforms = {
-      u_bounds: boundsUniform(bounds),
+      ...boundsUniforms(this.gpuWorld.world, bounds, targets.cloud.width),
       u_drift: CloudField.drift(days),
       u_offset: [offset.x, offset.y],
     };

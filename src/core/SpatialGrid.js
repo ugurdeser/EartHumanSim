@@ -2,7 +2,8 @@ import { wrapX } from './Planet.js';
 
 /**
  * Konumu sabit nesneler için uzamsal ızgara (göletler, madenler, yuvalar ...).
- * Nesnelerin bir `position` (Vector2) alanı olmalı.
+ * Nesnelerin bir `position` (Vector2) alanı olmalı. `onQuery(minX, minY, maxX, maxY)` verilirse her
+ * sorgudan önce çağrılır: nesneleri gerektikçe üreten (ör. uzak bölgelerin göletleri) buradan bilgilenir.
  */
 export class SpatialGrid {
   constructor(worldWidth, worldHeight, cellSize) {
@@ -10,6 +11,7 @@ export class SpatialGrid {
     this.cols = Math.ceil(worldWidth / cellSize);
     this.rows = Math.ceil(worldHeight / cellSize);
     this.cells = new Map(); // seyrek: yalnızca dolu hücreler tutulur
+    this.onQuery = null;
   }
 
   #col(x) {
@@ -45,6 +47,7 @@ export class SpatialGrid {
   }
 
   forEachInRect(minX, minY, maxX, maxY, callback) {
+    this.onQuery?.(minX, minY, maxX, maxY);
     const x0 = Math.floor(minX / this.cellSize);
     const x1 = Math.min(Math.floor(maxX / this.cellSize), x0 + this.cols - 1);
     const y0 = this.#row(minY);
@@ -71,6 +74,7 @@ export class SpatialGrid {
     const cx = this.#col(position.x);
     const cy = this.#row(position.y);
     const maxRing = Math.ceil(maxRadius / this.cellSize);
+    this.onQuery?.(position.x - maxRadius, position.y - maxRadius, position.x + maxRadius, position.y + maxRadius);
     let best = null;
     let bestDistance = maxRadius;
 

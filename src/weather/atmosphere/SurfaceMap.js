@@ -1,4 +1,4 @@
-import { Surface } from '../../world/Terrain.js';
+import { Surface, Terrain } from '../../world/Terrain.js';
 
 const SAMPLES = 4; // hücre başına 4×4 örnek
 
@@ -10,6 +10,7 @@ export class SurfaceMap {
   /** `peakAltitude`: arazinin 0..1 yükseltisinin karşılığı olan en yüksek doruk (m). */
   constructor(grid, terrain, peakAltitude) {
     const { size, cols, rows, cellWidth, cellHeight } = grid;
+    const detail = Terrain.detailFor(cellWidth / SAMPLES);
     this.land = new Float32Array(size);
     this.ice = new Float32Array(size);
     this.altitude = new Float32Array(size); // m (Dünya ölçeği)
@@ -24,11 +25,11 @@ export class SurfaceMap {
           for (let sx = 0; sx < SAMPLES; sx++) {
             const x = (i + (sx + 0.5) / SAMPLES) * cellWidth;
             const y = (j + (sy + 0.5) / SAMPLES) * cellHeight;
-            const surface = terrain.surfaceAt(x, y);
+            const surface = terrain.surfaceAt(x, y, detail);
             if (surface === Surface.ICE) ice++;
             else if (surface === Surface.LAND) {
               land++;
-              elevation += terrain.elevationAt(x, y);
+              elevation += terrain.elevationAt(x, y, detail);
             }
           }
         }

@@ -21,15 +21,18 @@ export class Hillshade {
     this.world = world;
   }
 
-  /** Yamacın güneşe dönüklüğü: -1 tam gölge, 0 düz zemin, 1 tam aydınlık. */
-  lightAt(x, y) {
+  /**
+   * Yamacın güneşe dönüklüğü: -1 tam gölge, 0 düz zemin, 1 tam aydınlık.
+   * `detail`, `spread`: uzaktan bakışta sırtlar silinir, eğim daha geniş ölçülür (Terrain.gradientAt).
+   */
+  lightAt(x, y, detail = 1, spread = undefined) {
     const { terrain, width } = this.world;
     const toSun = (wrapDelta(this.world.sunX - x) / width) * Math.PI * 2;
     const latitude = latitudeOf(y);
     const cosSun = Math.cos(toSun);
     const sunUp = Math.cos(latitude) * cosSun;
     if (sunUp <= 0) return 0;
-    const { east, south } = terrain.gradientAt(x, y);
+    const { east, south } = terrain.gradientAt(x, y, detail, spread);
     const sunEast = Math.sin(toSun);
     const sunNorth = -Math.sin(latitude) * cosSun;
     const light = (PEAK_HEIGHT * (south * sunNorth - east * sunEast)) / Math.max(sunUp, LOW_SUN);
@@ -37,8 +40,8 @@ export class Hillshade {
   }
 
   /** Noktadaki karın örtüsü (0..1): yükseklerde ve soğuk enlemlerde kalıcıdır. */
-  snowAt(x, y) {
+  snowAt(x, y, detail = 1) {
     const line = SNOW_LINE * (1 - POLAR_DROP * (Math.abs(latitudeOf(y)) / (Math.PI / 2)));
-    return smoothstep(line, line + SNOW_EDGE, this.world.terrain.elevationAt(x, y));
+    return smoothstep(line, line + SNOW_EDGE, this.world.terrain.elevationAt(x, y, detail));
   }
 }

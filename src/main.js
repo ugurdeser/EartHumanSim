@@ -20,7 +20,7 @@ const launch = async (planet, elevation = null) => {
   }
 };
 
-// ?seed=… ile açılırsa (geliştirme) başlangıç ekranı atlanır, varsayılan ayarlarla kurulur.
+// ?seed=… ile açılırsa (geliştirme) başlangıç ekranı atlanır, varsayılan ayarlarla kurulur (&size=earth: boy).
 const params = new URLSearchParams(window.location.search);
-if (params.has('seed')) launch(new PlanetSettings({ seed: Number(params.get('seed')) }));
+if (params.has('seed')) launch(new PlanetSettings({ seed: Number(params.get('seed')), ...(params.has('size') && { size: params.get('size') }) }));
 else new StartScreen(document.body, PlanetSettings.load(), launch);

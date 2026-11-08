@@ -4,6 +4,7 @@ import { MoveToAction } from '../../actions/MoveToAction.js';
 import { PerformAction } from '../../actions/PerformAction.js';
 import { SequenceAction } from '../../actions/SequenceAction.js';
 import { Capability, Items } from '../../items/Items.js';
+import { DrinkPlanner } from './DrinkPlanner.js';
 import { FoodProvider } from './FoodProvider.js';
 
 const SEARCH_RADIUS = 2000;
@@ -21,13 +22,13 @@ export class FishingProvider extends FoodProvider {
 
   plan(person, world) {
     if (!person.inventory.hasCapability(Capability.FISH)) return null;
-    const pond = world.findNearestPond(person.position, { withFish: true, maxRadius: SEARCH_RADIUS });
+    const pond = DrinkPlanner.reachablePond(person, world, { withFish: true, maxRadius: SEARCH_RADIUS });
     if (!pond) return null;
     const shore = pond.shorePointFrom(person.position);
     const expected = FishingProvider.successChance(person) * Items.FISH.cookedNutrition;
     const cost = (FoodProvider.travelTime(person, person.position, shore) + WORK_TIME) / expected;
     const action = new SequenceAction('Balık tutmaya gidiyor', [
-      new MoveToAction(`${pond.shoreLabel} gidiyor`, shore, { arriveDistance: 2 }),
+      new MoveToAction(`${pond.shoreLabel} gidiyor`, shore, { arriveDistance: 2, onBlocked: (p, w) => DrinkPlanner.blocked(p, w, pond) }),
       new PerformAction('Oltayla balık tutuyor', WORK_TIME / person.workSpeed('fishing', 'intelligence'), {
         onComplete: (p, w) => FishingProvider.#tryCatch(p, w, pond),
       }),

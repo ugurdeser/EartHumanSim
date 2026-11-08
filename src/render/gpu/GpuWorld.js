@@ -1,4 +1,5 @@
 import { CLOUD_FIELD } from '../CloudField.js';
+import { frameUniforms } from './glsl.js';
 
 /**
  * Dünyanın ekran kartındaki ızgaraları: yükselti, deniz ve bulut deseni bir kez yüklenir;
@@ -13,7 +14,7 @@ export class GpuWorld {
     const { cols, rows } = maps.grid;
     this.textures = {
       u_heights: gpu.floatTexture(terrain.heights, terrain.cols, terrain.rows),
-      u_elevations: gpu.floatTexture(terrain.elevations, terrain.cols, terrain.rows),
+      u_belts: gpu.floatTexture(terrain.belts, terrain.cols, terrain.rows),
       u_cloudField: gpu.floatTexture(clouds.values, CLOUD_FIELD.WIDTH, CLOUD_FIELD.HEIGHT),
       u_cloudThreshold: gpu.floatTexture(maps.threshold, cols, rows),
       u_cloudShade: gpu.floatTexture(maps.shade, cols, rows),
@@ -39,10 +40,16 @@ export class GpuWorld {
     this.overlay = source.pixels;
   }
 
-  /** Her çizimde güncel olan ortak değerler. */
+  /** Her çizimde güncel olan ortak değerler; konumlar haritanın başlangıcından (küre bunu kullanır). */
   get uniforms() {
-    const { terrain } = this.world;
-    return { u_seaLevel: terrain.seaLevel, u_icePhase: terrain.icePhase, u_sunX: this.world.sunX };
+    const { terrain, start } = this.world;
+    return {
+      ...frameUniforms(this.world, 0, 0, 0),
+      u_seaLevel: terrain.seaLevel,
+      u_icePhase: terrain.icePhase,
+      u_start: [start.x, start.y],
+      u_sunX: this.world.sunX,
+    };
   }
 
   /** `program`'ı dünyanın dokuları ve ortak değerleriyle `target`'a boyar. */

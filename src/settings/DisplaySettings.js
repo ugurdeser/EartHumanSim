@@ -7,7 +7,20 @@ export const Quality = Object.freeze({
   LOW: { id: 'low', label: 'Düşük (%50)', scale: 0.5 },
 });
 
-const DEFAULTS = Object.freeze({ quality: Quality.HIGH.id, relief: true, clouds: true, showFps: false, overlay: 'none' });
+/**
+ * Ayrıntı düzeyi (LOD): uzaklaştıkça ince ayrıntının (sırtlar, tepeler, kıyı girintileri, orman
+ * öbekleri) ne zaman ortalamasına söneceği ve zeminin kaç örnekle boyanacağı.
+ * `bias`: pikselin boyu bununla çarpılır (büyükse ayrıntı erken söner, görüntü sakin, çizim hızlı);
+ * `samples`: zemin pikseli başına örnek (kenarlar yumuşak); `pixel`: zeminin bir örneğinin ekran pikseli.
+ */
+export const Lod = Object.freeze({
+  LOW: { id: 'low', label: 'Düşük', bias: 2, samples: 1, pixel: 2 },
+  MEDIUM: { id: 'medium', label: 'Orta', bias: 1.4, samples: 1, pixel: 1.5 },
+  HIGH: { id: 'high', label: 'Yüksek', bias: 1, samples: 4, pixel: 1 },
+  ULTRA: { id: 'ultra', label: 'Çok yüksek', bias: 0.6, samples: 4, pixel: 1 },
+});
+
+const DEFAULTS = Object.freeze({ quality: Quality.HIGH.id, lod: Lod.HIGH.id, relief: true, clouds: true, showFps: false, overlay: 'none' });
 
 /**
  * Oyuncunun görüntü tercihleri: tarayıcıda saklanır, değişince dinleyenlere haber verilir.
@@ -32,6 +45,10 @@ export class DisplaySettings {
 
   get quality() {
     return Object.values(Quality).find((q) => q.id === this.#values.quality) ?? Quality.HIGH;
+  }
+
+  get lod() {
+    return Object.values(Lod).find((l) => l.id === this.#values.lod) ?? Lod.HIGH;
   }
 
   /** Çizimin ekran çözünürlüğüne oranı (1 = tam). */
